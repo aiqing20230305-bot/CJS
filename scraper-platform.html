@@ -896,6 +896,31 @@
       font-weight: 500;
     }
 
+    .period-selector {
+      display: flex;
+      align-items: center;
+      margin-left: 16px;
+      gap: 12px;
+    }
+
+    .period-option {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .period-option input[type="radio"] {
+      cursor: pointer;
+    }
+
+    .period-option span {
+      font-weight: 500;
+    }
+
     /* Insights Container */
     .insights-container {
       display: flex;
@@ -1862,6 +1887,26 @@
                   <span>时间对比</span>
                 </label>
               </div>
+              <!-- Comparison Period Selector -->
+              <div id="periodSelector" class="period-selector" style="display: none;">
+                <span style="font-size: 13px; color: var(--text-secondary); margin-right: 8px;">对比周期：</span>
+                <label class="period-option">
+                  <input type="radio" name="comparisonPeriod" value="previous" checked onchange="setPeriodType('previous')" />
+                  <span>上一期</span>
+                </label>
+                <label class="period-option">
+                  <input type="radio" name="comparisonPeriod" value="lastMonth" onchange="setPeriodType('lastMonth')" />
+                  <span>上月</span>
+                </label>
+                <label class="period-option">
+                  <input type="radio" name="comparisonPeriod" value="lastQuarter" onchange="setPeriodType('lastQuarter')" />
+                  <span>上季度</span>
+                </label>
+                <label class="period-option">
+                  <input type="radio" name="comparisonPeriod" value="lastYear" onchange="setPeriodType('lastYear')" />
+                  <span>去年同期</span>
+                </label>
+              </div>
             </div>
           </div>
           <!-- Insights Container -->
@@ -2488,6 +2533,7 @@
     let currentChartType = 'line'; // Default chart type: 'line', 'bar', 'area'
     let showDataLabels = true; // Show data point labels (max/min)
     let showComparison = false; // Enable time comparison mode
+    let comparisonPeriod = 'previous'; // Comparison period: 'previous', 'lastMonth', 'lastQuarter', 'lastYear'
     let trendChartData = [];
     let showCountMetric = true;
     let showSizeMetric = true;
@@ -3505,23 +3551,49 @@
     }
 
     // Get previous period data for comparison
-    function getPreviousPeriodData(currentData, timeRange) {
+    function getPreviousPeriodData(currentData, timeRange, period = 'previous') {
       if (!currentData || currentData.length === 0) return [];
 
-      // Calculate the offset days based on time range
-      const offsetDays = typeof timeRange === 'number' ? timeRange :
-                        (allFiles.length > 0 ? allFiles.length : 30);
-
-      // Get the start date of current period
       const currentStartDate = new Date(currentData[0].date);
+      const currentEndDate = new Date(currentData[currentData.length - 1].date);
+      let previousStartDate, previousEndDate;
 
-      // Calculate previous period start date
-      const previousStartDate = new Date(currentStartDate);
-      previousStartDate.setDate(previousStartDate.getDate() - offsetDays);
+      switch (period) {
+        case 'lastMonth':
+          // 上月同期
+          previousStartDate = new Date(currentStartDate);
+          previousStartDate.setMonth(previousStartDate.getMonth() - 1);
+          previousEndDate = new Date(currentEndDate);
+          previousEndDate.setMonth(previousEndDate.getMonth() - 1);
+          break;
 
-      // Calculate previous period end date
-      const previousEndDate = new Date(currentStartDate);
-      previousEndDate.setDate(previousEndDate.getDate() - 1);
+        case 'lastQuarter':
+          // 上季度同期
+          previousStartDate = new Date(currentStartDate);
+          previousStartDate.setMonth(previousStartDate.getMonth() - 3);
+          previousEndDate = new Date(currentEndDate);
+          previousEndDate.setMonth(previousEndDate.getMonth() - 3);
+          break;
+
+        case 'lastYear':
+          // 去年同期
+          previousStartDate = new Date(currentStartDate);
+          previousStartDate.setFullYear(previousStartDate.getFullYear() - 1);
+          previousEndDate = new Date(currentEndDate);
+          previousEndDate.setFullYear(previousEndDate.getFullYear() - 1);
+          break;
+
+        case 'previous':
+        default:
+          // 上一期（默认）
+          const offsetDays = typeof timeRange === 'number' ? timeRange :
+                            (currentData.length > 0 ? currentData.length : 30);
+          previousStartDate = new Date(currentStartDate);
+          previousStartDate.setDate(previousStartDate.getDate() - offsetDays);
+          previousEndDate = new Date(currentStartDate);
+          previousEndDate.setDate(previousEndDate.getDate() - 1);
+          break;
+      }
 
       // Filter files in previous period
       const previousFiles = allFiles.filter(file => {
@@ -3531,6 +3603,14 @@
 
       // Aggregate by day
       return aggregateByDay(previousFiles);
+    }
+
+    // Set comparison period type
+    function setPeriodType(period) {
+      comparisonPeriod = period;
+      if (showComparison) {
+        updateTrendChart();
+      }
     }
 
     // Calculate comparison difference
@@ -3610,6 +3690,13 @@
     // Toggle comparison mode
     function toggleComparison() {
       showComparison = document.getElementById('showComparisonCheckbox').checked;
+
+      // Show/hide period selector
+      const periodSelector = document.getElementById('periodSelector');
+      if (periodSelector) {
+        periodSelector.style.display = showComparison ? 'flex' : 'none';
+      }
+
       updateTrendChart();
     }
 
@@ -3640,7 +3727,7 @@
       const aggregatedData = aggregateByDay(filteredFiles);
 
       // Get comparison data if enabled
-      const comparisonData = showComparison ? getPreviousPeriodData(aggregatedData, currentTimeRange) : null;
+      const comparisonData = showComparison ? getPreviousPeriodData(aggregatedData, currentTimeRange, comparisonPeriod) : null;
 
       // Draw chart based on type
       if (currentChartType === 'bar') {

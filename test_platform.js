@@ -990,7 +990,7 @@ async function testTimeComparisonUI() {
 
     // Check updateTrendChart supports comparison
     assert(html.includes('comparisonData = showComparison'), 'updateTrendChart支持对比模式');
-    assert(html.includes('getPreviousPeriodData(aggregatedData, currentTimeRange)'), 'getPreviousPeriodData在updateTrendChart中被调用');
+    assert(html.includes('getPreviousPeriodData(aggregatedData, currentTimeRange'), 'getPreviousPeriodData在updateTrendChart中被调用');
 
     log('  ✓ 所有时间对比UI元素验证通过');
   } catch (error) {
@@ -1022,6 +1022,40 @@ async function testComparisonDiffUI() {
     log('  ✓ 所有对比差异显示UI元素验证通过');
   } catch (error) {
     assert(false, `对比差异显示UI测试失败: ${error.message}`);
+  }
+}
+
+// Test 27: 自定义对比周期UI测试
+async function testCustomPeriodUI() {
+  log('\n测试 27: 自定义对比周期 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check state variable
+    assert(html.includes('comparisonPeriod'), 'comparisonPeriod 状态变量存在');
+
+    // Check JavaScript functions
+    assert(html.includes('function setPeriodType('), 'setPeriodType 函数存在');
+    assert(html.includes('function getPreviousPeriodData(currentData, timeRange, period'), 'getPreviousPeriodData支持period参数');
+
+    // Check UI elements
+    assert(html.includes('id="periodSelector"'), '对比周期选择器存在');
+    assert(html.includes('class="period-selector"'), '对比周期选择器class存在');
+    assert(html.includes('value="previous"'), '上一期选项存在');
+    assert(html.includes('value="lastMonth"'), '上月选项存在');
+    assert(html.includes('value="lastQuarter"'), '上季度选项存在');
+    assert(html.includes('value="lastYear"'), '去年同期选项存在');
+
+    // Check CSS styles
+    assert(html.includes('.period-selector'), '对比周期选择器样式存在');
+    assert(html.includes('.period-option'), '周期选项样式存在');
+
+    log('  ✓ 所有自定义对比周期UI元素验证通过');
+  } catch (error) {
+    assert(false, `自定义对比周期UI测试失败: ${error.message}`);
   }
 }
 
@@ -1057,6 +1091,7 @@ async function runTests() {
   await testTrendInsightsUI();
   await testTimeComparisonUI();
   await testComparisonDiffUI();
+  await testCustomPeriodUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
