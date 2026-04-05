@@ -965,6 +965,39 @@ async function testTrendInsightsUI() {
   }
 }
 
+// Test 25: 时间对比UI测试
+async function testTimeComparisonUI() {
+  log('\n测试 25: 时间对比 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check JavaScript functions
+    assert(html.includes('function getPreviousPeriodData('), 'getPreviousPeriodData 函数存在');
+    assert(html.includes('function toggleComparison('), 'toggleComparison 函数存在');
+
+    // Check state variable
+    assert(html.includes('showComparison'), 'showComparison 状态变量存在');
+
+    // Check UI elements
+    assert(html.includes('class="comparison-toggle"'), '对比模式切换器存在');
+    assert(html.includes('id="showComparisonCheckbox"'), '对比模式checkbox存在');
+
+    // Check CSS styles
+    assert(html.includes('.comparison-toggle'), '对比模式切换器样式存在');
+
+    // Check updateTrendChart supports comparison
+    assert(html.includes('comparisonData = showComparison'), 'updateTrendChart支持对比模式');
+    assert(html.includes('getPreviousPeriodData(aggregatedData, currentTimeRange)'), 'getPreviousPeriodData在updateTrendChart中被调用');
+
+    log('  ✓ 所有时间对比UI元素验证通过');
+  } catch (error) {
+    assert(false, `时间对比UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -995,6 +1028,7 @@ async function runTests() {
   await testChartTypeUI();
   await testDataLabelsUI();
   await testTrendInsightsUI();
+  await testTimeComparisonUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);

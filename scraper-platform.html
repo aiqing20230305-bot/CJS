@@ -870,6 +870,32 @@
       font-weight: 500;
     }
 
+    .comparison-toggle {
+      display: flex;
+      align-items: center;
+      margin-left: 16px;
+    }
+
+    .comparison-toggle label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .comparison-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .comparison-toggle span {
+      font-weight: 500;
+    }
+
     /* Insights Container */
     .insights-container {
       display: flex;
@@ -1829,6 +1855,13 @@
                   <span>显示数据点标注</span>
                 </label>
               </div>
+              <!-- Comparison Toggle -->
+              <div class="comparison-toggle">
+                <label>
+                  <input type="checkbox" id="showComparisonCheckbox" onchange="toggleComparison()" />
+                  <span>时间对比</span>
+                </label>
+              </div>
             </div>
           </div>
           <!-- Insights Container -->
@@ -2454,6 +2487,7 @@
     let currentTimeRange = 7; // Default 7 days
     let currentChartType = 'line'; // Default chart type: 'line', 'bar', 'area'
     let showDataLabels = true; // Show data point labels (max/min)
+    let showComparison = false; // Enable time comparison mode
     let trendChartData = [];
     let showCountMetric = true;
     let showSizeMetric = true;
@@ -2473,7 +2507,7 @@
       return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
     }
 
-    function drawTrendChart(canvas, data) {
+    function drawTrendChart(canvas, data, comparisonData = null) {
       const ctx = canvas.getContext('2d');
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -2644,11 +2678,78 @@
         });
       }
 
+      // Draw comparison data (previous period)
+      if (comparisonData && comparisonData.length > 0) {
+        // Draw comparison count line (blue, dashed)
+        if (showCountMetric) {
+          ctx.strokeStyle = 'rgba(35, 131, 226, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw comparison count points
+          ctx.fillStyle = 'rgba(35, 131, 226, 0.5)';
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+
+        // Draw comparison size line (green, dashed)
+        if (showSizeMetric) {
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.lineJoin = 'round';
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw comparison size points
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.5)';
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+      }
+
       // Draw data point labels (max/min markers)
       drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
     }
 
-    function drawBarChart(canvas, data) {
+    function drawBarChart(canvas, data, comparisonData = null) {
       const ctx = canvas.getContext('2d');
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -2769,7 +2870,7 @@
       drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
     }
 
-    function drawAreaChart(canvas, data) {
+    function drawAreaChart(canvas, data, comparisonData = null) {
       const ctx = canvas.getContext('2d');
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas.getBoundingClientRect();
@@ -2945,6 +3046,109 @@
           ctx.arc(x, y, 4, 0, Math.PI * 2);
           ctx.fill();
         });
+      }
+
+      // Draw comparison data (previous period)
+      if (comparisonData && comparisonData.length > 0) {
+        // Draw comparison count area (blue, dashed line with light fill)
+        if (showCountMetric) {
+          ctx.beginPath();
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+            if (i === 0) {
+              ctx.moveTo(x, padding.top + chartHeight);
+              ctx.lineTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+          ctx.closePath();
+
+          const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+          gradient.addColorStop(0, 'rgba(35, 131, 226, 0.15)');
+          gradient.addColorStop(1, 'rgba(35, 131, 226, 0.0)');
+          ctx.fillStyle = gradient;
+          ctx.fill();
+
+          // Draw dashed line
+          ctx.strokeStyle = 'rgba(35, 131, 226, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw data points
+          ctx.fillStyle = 'rgba(35, 131, 226, 0.5)';
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+
+        // Draw comparison size area (green, dashed line with light fill)
+        if (showSizeMetric) {
+          ctx.beginPath();
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+            if (i === 0) {
+              ctx.moveTo(x, padding.top + chartHeight);
+              ctx.lineTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+          ctx.closePath();
+
+          const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+          gradient.addColorStop(0, 'rgba(16, 185, 129, 0.15)');
+          gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+          ctx.fillStyle = gradient;
+          ctx.fill();
+
+          // Draw dashed line
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([5, 5]);
+          ctx.beginPath();
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+            if (i === 0) {
+              ctx.moveTo(x, y);
+            } else {
+              ctx.lineTo(x, y);
+            }
+          });
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Draw data points
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.5)';
+          comparisonData.forEach((d, i) => {
+            const x = padding.left + (chartWidth / (comparisonData.length - 1)) * i;
+            const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+            ctx.beginPath();
+            ctx.arc(x, y, 3, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
       }
 
       // Draw data point labels (max/min markers)
@@ -3290,6 +3494,41 @@
       `).join('');
     }
 
+    // Get previous period data for comparison
+    function getPreviousPeriodData(currentData, timeRange) {
+      if (!currentData || currentData.length === 0) return [];
+
+      // Calculate the offset days based on time range
+      const offsetDays = typeof timeRange === 'number' ? timeRange :
+                        (allFiles.length > 0 ? allFiles.length : 30);
+
+      // Get the start date of current period
+      const currentStartDate = new Date(currentData[0].date);
+
+      // Calculate previous period start date
+      const previousStartDate = new Date(currentStartDate);
+      previousStartDate.setDate(previousStartDate.getDate() - offsetDays);
+
+      // Calculate previous period end date
+      const previousEndDate = new Date(currentStartDate);
+      previousEndDate.setDate(previousEndDate.getDate() - 1);
+
+      // Filter files in previous period
+      const previousFiles = allFiles.filter(file => {
+        const fileDate = new Date(file.date);
+        return fileDate >= previousStartDate && fileDate <= previousEndDate;
+      });
+
+      // Aggregate by day
+      return aggregateByDay(previousFiles);
+    }
+
+    // Toggle comparison mode
+    function toggleComparison() {
+      showComparison = document.getElementById('showComparisonCheckbox').checked;
+      updateTrendChart();
+    }
+
     function switchChartType(type) {
       currentChartType = type;
 
@@ -3316,13 +3555,16 @@
       // Aggregate data by day
       const aggregatedData = aggregateByDay(filteredFiles);
 
+      // Get comparison data if enabled
+      const comparisonData = showComparison ? getPreviousPeriodData(aggregatedData, currentTimeRange) : null;
+
       // Draw chart based on type
       if (currentChartType === 'bar') {
-        drawBarChart(canvas, aggregatedData);
+        drawBarChart(canvas, aggregatedData, comparisonData);
       } else if (currentChartType === 'area') {
-        drawAreaChart(canvas, aggregatedData);
+        drawAreaChart(canvas, aggregatedData, comparisonData);
       } else {
-        drawTrendChart(canvas, aggregatedData);
+        drawTrendChart(canvas, aggregatedData, comparisonData);
       }
 
       // Show container
