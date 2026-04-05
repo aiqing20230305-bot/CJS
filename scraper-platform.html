@@ -814,6 +814,178 @@
       display: block;
     }
 
+    /* Filter Presets */
+    .preset-container {
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .preset-container.active {
+      display: block;
+    }
+
+    .preset-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .preset-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-right: 4px;
+    }
+
+    .preset-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .preset-btn:hover {
+      background: var(--hover);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .preset-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .custom-preset-btn {
+      background: #f0f7ff;
+      border-color: var(--accent);
+      color: var(--accent);
+      position: relative;
+      padding-right: 32px;
+    }
+
+    .custom-preset-btn:hover {
+      background: #e3f2fd;
+    }
+
+    .preset-delete-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      padding: 2px 4px;
+      font-size: 16px;
+      line-height: 1;
+      display: none;
+    }
+
+    .custom-preset-btn:hover .preset-delete-btn {
+      display: block;
+    }
+
+    .preset-delete-btn:hover {
+      color: #ff6b6b;
+    }
+
+    .btn-save-preset {
+      padding: 6px 14px;
+      border: 1px solid var(--accent);
+      border-radius: 16px;
+      background: var(--bg);
+      color: var(--accent);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-save-preset:hover {
+      background: var(--accent);
+      color: white;
+    }
+
+    /* Filter Restore Banner */
+    .filter-restore-banner {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-restore-banner.active {
+      display: flex;
+    }
+
+    .filter-restore-banner > span {
+      font-size: 14px;
+      color: #856404;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .banner-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .banner-actions button {
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      border: none;
+    }
+
+    .banner-actions button:first-child {
+      background: var(--accent);
+      color: white;
+    }
+
+    .banner-actions button:first-child:hover {
+      background: var(--accent-hover);
+    }
+
+    .banner-actions button:nth-child(2) {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .banner-actions button:nth-child(2):hover {
+      border-color: var(--accent);
+    }
+
+    .banner-actions label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .banner-actions input[type="checkbox"] {
+      cursor: pointer;
+    }
+
     .file-row {
       transition: all 0.2s;
     }
@@ -1283,8 +1455,35 @@
         </div>
       </div>
 
+      <!-- Filter Restore Banner -->
+      <div class="filter-restore-banner" id="filterRestoreBanner">
+        <span>🔍 检测到上次筛选条件，是否恢复？</span>
+        <div class="banner-actions">
+          <button onclick="restoreLastFilter()">恢复</button>
+          <button onclick="ignoreRestoreBanner()">忽略</button>
+          <label>
+            <input type="checkbox" id="dontShowAgainCheckbox">
+            不再提示
+          </label>
+        </div>
+      </div>
+
       <!-- Search & Filter Section -->
       <div class="search-filter-container" id="searchFilterContainer">
+        <!-- Filter Presets -->
+        <div class="preset-container" id="presetContainer">
+          <div class="preset-buttons">
+            <span class="preset-label">快捷筛选：</span>
+            <button class="preset-btn" onclick="applyPreset('latest')">🆕 最新数据</button>
+            <button class="preset-btn" onclick="applyPreset('market')">🔥 市场热点</button>
+            <button class="preset-btn" onclick="applyPreset('competitor')">📊 竞品分析</button>
+            <button class="preset-btn" onclick="applyPreset('thisweek')">📅 本周数据</button>
+            <button class="preset-btn" onclick="applyPreset('all')">🔄 全部数据</button>
+            <div id="customPresetsContainer"></div>
+            <button class="btn-save-preset" onclick="showSavePresetModal()">💾 保存为预设</button>
+          </div>
+        </div>
+
         <!-- Search Box -->
         <div class="search-box">
           <input
@@ -1409,6 +1608,301 @@
     // Global variables for file selection
     let selectedFiles = [];
 
+    // Global variables for filter persistence
+    let isLoadingState = false;
+    let saveStateDebounceTimer = null;
+    const FILTER_STATE_KEY = 'dataPackageFilterState';
+    const DONT_SHOW_RESTORE_KEY = 'dontShowRestoreBanner';
+    const CUSTOM_PRESETS_KEY = 'customFilterPresets';
+
+    // Built-in filter presets
+    const BUILTIN_PRESETS = {
+      latest: {
+        name: '🆕 最新数据',
+        config: { searchTerm: '', typeFilter: 'all', timeFilter: 'week', sortField: 'time', sortOrder: 'desc' }
+      },
+      market: {
+        name: '🔥 市场热点',
+        config: { searchTerm: '', typeFilter: 'market', timeFilter: 'month', sortField: 'time', sortOrder: 'desc' }
+      },
+      competitor: {
+        name: '📊 竞品分析',
+        config: { searchTerm: '', typeFilter: 'competitor', timeFilter: 'month', sortField: 'time', sortOrder: 'desc' }
+      },
+      thisweek: {
+        name: '📅 本周数据',
+        config: { searchTerm: '', typeFilter: 'all', timeFilter: 'week', sortField: 'time', sortOrder: 'desc' }
+      },
+      all: {
+        name: '🔄 全部数据',
+        config: { searchTerm: '', typeFilter: 'all', timeFilter: 'all', sortField: 'time', sortOrder: 'desc' }
+      }
+    };
+
+    // Filter persistence functions
+    function getFilterState() {
+      return {
+        searchTerm: document.getElementById('searchInput').value,
+        typeFilter: document.getElementById('typeFilter').value,
+        timeFilter: document.getElementById('timeFilter').value,
+        sortField: currentSortField,
+        sortOrder: currentSortOrder,
+        timestamp: Date.now()
+      };
+    }
+
+    function saveFilterState() {
+      if (isLoadingState) return; // Prevent saving during load
+
+      clearTimeout(saveStateDebounceTimer);
+      saveStateDebounceTimer = setTimeout(() => {
+        try {
+          const state = getFilterState();
+          localStorage.setItem(FILTER_STATE_KEY, JSON.stringify(state));
+          console.log('Filter state saved:', state);
+        } catch (error) {
+          console.error('Failed to save filter state:', error);
+        }
+      }, 1000); // 1 second debounce
+    }
+
+    function loadFilterState() {
+      try {
+        const savedState = localStorage.getItem(FILTER_STATE_KEY);
+        if (!savedState) return null;
+
+        const state = JSON.parse(savedState);
+        console.log('Filter state loaded:', state);
+        return state;
+      } catch (error) {
+        console.error('Failed to load filter state:', error);
+        return null;
+      }
+    }
+
+    function clearFilterState() {
+      try {
+        localStorage.removeItem(FILTER_STATE_KEY);
+        console.log('Filter state cleared');
+      } catch (error) {
+        console.error('Failed to clear filter state:', error);
+      }
+    }
+
+    function applyFilterState(state) {
+      if (!state) return;
+
+      isLoadingState = true;
+
+      // Apply search term
+      document.getElementById('searchInput').value = state.searchTerm || '';
+
+      // Apply type filter
+      document.getElementById('typeFilter').value = state.typeFilter || 'all';
+
+      // Apply time filter
+      document.getElementById('timeFilter').value = state.timeFilter || 'all';
+
+      // Apply sort
+      if (state.sortField && state.sortOrder) {
+        currentSortField = state.sortField;
+        currentSortOrder = state.sortOrder;
+
+        // Update sort button states
+        document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+        const btnId = `sort${state.sortField.charAt(0).toUpperCase() + state.sortField.slice(1)}`;
+        const activeBtn = document.getElementById(btnId);
+        if (activeBtn) {
+          activeBtn.classList.add('active');
+
+          if (state.sortField === 'time') {
+            activeBtn.textContent = state.sortOrder === 'desc' ? '时间 ↓' : '时间 ↑';
+          } else if (state.sortField === 'name') {
+            activeBtn.textContent = state.sortOrder === 'asc' ? '名称 A-Z' : '名称 Z-A';
+          } else if (state.sortField === 'size') {
+            activeBtn.textContent = state.sortOrder === 'desc' ? '大小 ↓' : '大小 ↑';
+          }
+        }
+      }
+
+      // Apply filters
+      applyFilters();
+
+      isLoadingState = false;
+    }
+
+    // Filter preset functions
+    function applyPreset(presetId) {
+      const preset = BUILTIN_PRESETS[presetId];
+      if (!preset) {
+        console.error('Unknown preset:', presetId);
+        return;
+      }
+
+      console.log('Applying preset:', preset.name);
+      applyFilterState(preset.config);
+    }
+
+    function showSavePresetModal() {
+      const name = prompt('请输入预设名称：');
+      if (!name) return;
+
+      saveCustomPreset(name.trim());
+    }
+
+    function saveCustomPreset(name) {
+      try {
+        const presets = loadCustomPresets();
+
+        // Check limit
+        if (presets.length >= 5) {
+          alert('最多只能保存5个自定义预设');
+          return;
+        }
+
+        // Check duplicate name
+        if (presets.some(p => p.name === name)) {
+          alert('预设名称已存在');
+          return;
+        }
+
+        const newPreset = {
+          id: Date.now().toString(),
+          name: name,
+          config: getFilterState(),
+          createdAt: Date.now()
+        };
+
+        presets.push(newPreset);
+        localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(presets));
+
+        console.log('Custom preset saved:', newPreset);
+        renderCustomPresets();
+
+        alert(`预设 "${name}" 已保存`);
+      } catch (error) {
+        console.error('Failed to save custom preset:', error);
+        alert('保存预设失败');
+      }
+    }
+
+    function loadCustomPresets() {
+      try {
+        const data = localStorage.getItem(CUSTOM_PRESETS_KEY);
+        return data ? JSON.parse(data) : [];
+      } catch (error) {
+        console.error('Failed to load custom presets:', error);
+        return [];
+      }
+    }
+
+    function deleteCustomPreset(id) {
+      try {
+        const presets = loadCustomPresets();
+        const preset = presets.find(p => p.id === id);
+
+        if (!preset) return;
+
+        if (!confirm(`确定删除预设 "${preset.name}"？`)) {
+          return;
+        }
+
+        const updatedPresets = presets.filter(p => p.id !== id);
+        localStorage.setItem(CUSTOM_PRESETS_KEY, JSON.stringify(updatedPresets));
+
+        console.log('Custom preset deleted:', id);
+        renderCustomPresets();
+      } catch (error) {
+        console.error('Failed to delete custom preset:', error);
+        alert('删除预设失败');
+      }
+    }
+
+    function applyCustomPreset(id) {
+      const presets = loadCustomPresets();
+      const preset = presets.find(p => p.id === id);
+
+      if (!preset) {
+        console.error('Custom preset not found:', id);
+        return;
+      }
+
+      console.log('Applying custom preset:', preset.name);
+      applyFilterState(preset.config);
+    }
+
+    function renderCustomPresets() {
+      const container = document.getElementById('customPresetsContainer');
+      if (!container) return;
+
+      const presets = loadCustomPresets();
+
+      container.innerHTML = presets.map(preset => `
+        <button class="preset-btn custom-preset-btn" onclick="applyCustomPreset('${preset.id}')">
+          ${preset.name}
+          <span class="preset-delete-btn" onclick="event.stopPropagation(); deleteCustomPreset('${preset.id}')">✕</span>
+        </button>
+      `).join('');
+    }
+
+    // Filter restore banner functions
+    function shouldShowRestoreBanner() {
+      // Check if user has chosen "don't show again"
+      const dontShow = localStorage.getItem(DONT_SHOW_RESTORE_KEY);
+      if (dontShow === 'true') {
+        return false;
+      }
+
+      // Check if there's a saved filter state
+      const savedState = loadFilterState();
+      if (!savedState) {
+        return false;
+      }
+
+      // Check if current filters are in default state
+      const currentState = getFilterState();
+      const isDefault = (
+        (!currentState.searchTerm || currentState.searchTerm === '') &&
+        currentState.typeFilter === 'all' &&
+        currentState.timeFilter === 'all' &&
+        currentState.sortField === 'time' &&
+        currentState.sortOrder === 'desc'
+      );
+
+      return isDefault;
+    }
+
+    function showRestoreBanner() {
+      const banner = document.getElementById('filterRestoreBanner');
+      if (banner) {
+        banner.classList.add('active');
+      }
+    }
+
+    function hideRestoreBanner() {
+      const banner = document.getElementById('filterRestoreBanner');
+      if (banner) {
+        banner.classList.remove('active');
+      }
+    }
+
+    function restoreLastFilter() {
+      const savedState = loadFilterState();
+      if (savedState) {
+        applyFilterState(savedState);
+      }
+      hideRestoreBanner();
+    }
+
+    function ignoreRestoreBanner() {
+      const checkbox = document.getElementById('dontShowAgainCheckbox');
+      if (checkbox && checkbox.checked) {
+        localStorage.setItem(DONT_SHOW_RESTORE_KEY, 'true');
+        console.log('Restore banner disabled');
+      }
+      hideRestoreBanner();
+    }
+
     // Search handler with debounce
     function handleSearch() {
       clearTimeout(searchDebounceTimer);
@@ -1473,6 +1967,9 @@
 
       // Render filtered files
       renderFileTable(filteredFiles, searchTerm);
+
+      // Save filter state
+      saveFilterState();
     }
 
     // Sort files
@@ -2262,6 +2759,7 @@
         downloadAllBtn.style.display = 'block';
         exportAllBtn.style.display = 'block';
         searchFilterContainer.classList.add('active');
+        document.getElementById('presetContainer').classList.add('active');
 
         // Render table with current filters applied
         applyFilters();
@@ -2682,8 +3180,25 @@
     // Initialize
     window.addEventListener('load', () => {
       console.log('数据抓取配置平台已加载');
+
+      // Render custom presets
+      renderCustomPresets();
+
+      // Check if should show restore banner
+      if (shouldShowRestoreBanner()) {
+        showRestoreBanner();
+      } else {
+        // Load filter state from localStorage if banner not shown
+        const savedState = loadFilterState();
+        if (savedState) {
+          console.log('Applying saved filter state');
+          applyFilterState(savedState);
+        }
+      }
+
       // Load existing data packages
       loadDataPackages();
+
       // Load history from localStorage
       renderHistory();
     });

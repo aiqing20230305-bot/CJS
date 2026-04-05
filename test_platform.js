@@ -506,6 +506,118 @@ async function testDeleteAPI() {
   }
 }
 
+// Test 14: 筛选条件持久化UI测试
+async function testFilterPersistenceUI() {
+  log('\n测试 14: 筛选条件持久化 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check localStorage functions
+    assert(html.includes('function getFilterState('), 'getFilterState 函数存在');
+    assert(html.includes('function saveFilterState('), 'saveFilterState 函数存在');
+    assert(html.includes('function loadFilterState('), 'loadFilterState 函数存在');
+    assert(html.includes('function clearFilterState('), 'clearFilterState 函数存在');
+    assert(html.includes('function applyFilterState('), 'applyFilterState 函数存在');
+
+    // Check constants
+    assert(html.includes('FILTER_STATE_KEY'), 'FILTER_STATE_KEY 常量存在');
+    assert(html.includes('isLoadingState'), 'isLoadingState 标志位存在');
+
+    log('  ✓ 所有持久化UI元素验证通过');
+  } catch (error) {
+    assert(false, `筛选条件持久化UI测试失败: ${error.message}`);
+  }
+}
+
+// Test 15: 快捷预设UI测试
+async function testPresetUI() {
+  log('\n测试 15: 快捷预设 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check preset container
+    assert(html.includes('id="presetContainer"'), '预设容器存在');
+    assert(html.includes('class="preset-buttons"'), '预设按钮组存在');
+
+    // Check built-in preset buttons
+    assert(html.includes('🆕 最新数据'), '最新数据预设存在');
+    assert(html.includes('🔥 市场热点'), '市场热点预设存在');
+    assert(html.includes('📊 竞品分析'), '竞品分析预设存在');
+    assert(html.includes('📅 本周数据'), '本周数据预设存在');
+    assert(html.includes('🔄 全部数据'), '全部数据预设存在');
+
+    // Check save preset button
+    assert(html.includes('💾 保存为预设'), '保存预设按钮存在');
+    assert(html.includes('id="customPresetsContainer"'), '自定义预设容器存在');
+
+    // Check preset functions
+    assert(html.includes('function applyPreset('), 'applyPreset 函数存在');
+    assert(html.includes('function saveCustomPreset('), 'saveCustomPreset 函数存在');
+    assert(html.includes('function loadCustomPresets('), 'loadCustomPresets 函数存在');
+    assert(html.includes('function deleteCustomPreset('), 'deleteCustomPreset 函数存在');
+    assert(html.includes('function renderCustomPresets('), 'renderCustomPresets 函数存在');
+
+    // Check BUILTIN_PRESETS
+    assert(html.includes('BUILTIN_PRESETS'), 'BUILTIN_PRESETS 配置存在');
+    assert(html.includes('CUSTOM_PRESETS_KEY'), 'CUSTOM_PRESETS_KEY 常量存在');
+
+    // Check CSS classes
+    assert(html.includes('.preset-container'), '预设容器样式存在');
+    assert(html.includes('.preset-btn'), '预设按钮样式存在');
+    assert(html.includes('.custom-preset-btn'), '自定义预设按钮样式存在');
+
+    log('  ✓ 所有预设UI元素验证通过');
+  } catch (error) {
+    assert(false, `快捷预设UI测试失败: ${error.message}`);
+  }
+}
+
+// Test 16: 恢复提示条UI测试
+async function testRestoreBannerUI() {
+  log('\n测试 16: 恢复提示条 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check restore banner HTML
+    assert(html.includes('id="filterRestoreBanner"'), '恢复提示条存在');
+    assert(html.includes('class="filter-restore-banner"'), '提示条class存在');
+    assert(html.includes('检测到上次筛选条件，是否恢复'), '提示文案正确');
+
+    // Check buttons
+    assert(html.includes('恢复'), '恢复按钮存在');
+    assert(html.includes('忽略'), '忽略按钮存在');
+    assert(html.includes('不再提示'), '不再提示选项存在');
+    assert(html.includes('id="dontShowAgainCheckbox"'), '不再提示checkbox存在');
+
+    // Check functions
+    assert(html.includes('function shouldShowRestoreBanner('), 'shouldShowRestoreBanner 函数存在');
+    assert(html.includes('function showRestoreBanner('), 'showRestoreBanner 函数存在');
+    assert(html.includes('function hideRestoreBanner('), 'hideRestoreBanner 函数存在');
+    assert(html.includes('function restoreLastFilter('), 'restoreLastFilter 函数存在');
+    assert(html.includes('function ignoreRestoreBanner('), 'ignoreRestoreBanner 函数存在');
+
+    // Check constants
+    assert(html.includes('DONT_SHOW_RESTORE_KEY'), 'DONT_SHOW_RESTORE_KEY 常量存在');
+
+    // Check CSS classes
+    assert(html.includes('.filter-restore-banner'), '提示条样式存在');
+    assert(html.includes('.banner-actions'), '按钮组样式存在');
+
+    log('  ✓ 所有恢复提示条UI元素验证通过');
+  } catch (error) {
+    assert(false, `恢复提示条UI测试失败: ${error.message}`);
+  }
+}
+
 // Test 13: 批量操作UI测试
 async function testBatchOperationsUI() {
   log('\n测试 13: 批量操作 UI 元素', colors.blue);
@@ -580,6 +692,9 @@ async function runTests() {
   await testSearchFilterUI();
   await testDeleteAPI();
   await testBatchOperationsUI();
+  await testFilterPersistenceUI();
+  await testPresetUI();
+  await testRestoreBannerUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
