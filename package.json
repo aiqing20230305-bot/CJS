@@ -1,0 +1,14 @@
+{
+  "name": "super-data",
+  "version": "1.0.0",
+  "description": "超级数据 - 社交平台内容采集与分析",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["agent-reach", "social-media", "content-analysis"],
+  "author": "",
+  "license": "ISC"
+}
