@@ -611,6 +611,38 @@
       color: var(--text-secondary);
     }
 
+    .stat-trend {
+      margin-top: 8px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .trend-indicator {
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .trend-up {
+      color: #10b981;
+    }
+
+    .trend-down {
+      color: #ef4444;
+    }
+
+    .trend-stable {
+      color: var(--text-tertiary);
+    }
+
+    .trend-desc {
+      color: var(--text-tertiary);
+      font-size: 11px;
+    }
+
     /* Pie Chart */
     #chartContainer {
       background: var(--bg-secondary);
@@ -1441,6 +1473,20 @@
             <div class="stat-value" id="statAvgSize">0 MB</div>
             <div class="stat-label">平均大小</div>
           </div>
+          <!-- Today New -->
+          <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-value" id="statTodayNew">0</div>
+            <div class="stat-label">今日新增</div>
+            <div class="stat-trend" id="statTodayTrend"></div>
+          </div>
+          <!-- Week New -->
+          <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-value" id="statWeekNew">0</div>
+            <div class="stat-label">本周新增</div>
+            <div class="stat-trend" id="statWeekTrend"></div>
+          </div>
         </div>
 
         <!-- Data Type Distribution Chart -->
@@ -1901,6 +1947,170 @@
         console.log('Restore banner disabled');
       }
       hideRestoreBanner();
+    }
+
+    // Data aggregation and trend calculation functions
+    function aggregateByDay(files) {
+      const dayMap = {};
+
+      files.forEach(file => {
+        const date = new Date(file.time);
+        const dayKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+        if (!dayMap[dayKey]) {
+          dayMap[dayKey] = {
+            date: dayKey,
+            count: 0,
+            totalSize: 0,
+            types: {}
+          };
+        }
+
+        dayMap[dayKey].count++;
+        dayMap[dayKey].totalSize += parseSizeToBytes(file.size);
+
+        // Extract type from filename
+        const filename = file.filename.toLowerCase();
+        let type = 'other';
+        if (filename.includes('市场热点')) type = 'market';
+        else if (filename.includes('爆款视频')) type = 'video';
+        else if (filename.includes('竞品分析')) type = 'competitor';
+        else if (filename.includes('品类报告')) type = 'category';
+        else if (filename.includes('完整数据包')) type = 'full';
+
+        dayMap[dayKey].types[type] = (dayMap[dayKey].types[type] || 0) + 1;
+      });
+
+      return Object.values(dayMap).sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    function filterByTimeRange(files, rangeDays) {
+      if (rangeDays === 'all') return files;
+
+      const days = parseInt(rangeDays);
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - days);
+      cutoffDate.setHours(0, 0, 0, 0);
+
+      return files.filter(file => {
+        const fileDate = new Date(file.time);
+        return fileDate >= cutoffDate;
+      });
+    }
+
+    function getTodayCount(files) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const todayFiles = files.filter(file => {
+        const fileDate = new Date(file.time);
+        fileDate.setHours(0, 0, 0, 0);
+        return fileDate.getTime() === today.getTime();
+      });
+
+      return todayFiles.length;
+    }
+
+    function getYesterdayCount(files) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      yesterday.setHours(0, 0, 0, 0);
+
+      const yesterdayFiles = files.filter(file => {
+        const fileDate = new Date(file.time);
+        fileDate.setHours(0, 0, 0, 0);
+        return fileDate.getTime() === yesterday.getTime();
+      });
+
+      return yesterdayFiles.length;
+    }
+
+    function getThisWeekCount(files) {
+      const now = new Date();
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const weekFiles = files.filter(file => {
+        const fileDate = new Date(file.time);
+        return fileDate >= startOfWeek;
+      });
+
+      return weekFiles.length;
+    }
+
+    function getLastWeekCount(files) {
+      const now = new Date();
+      const startOfLastWeek = new Date(now);
+      startOfLastWeek.setDate(now.getDate() - now.getDay() - 7);
+      startOfLastWeek.setHours(0, 0, 0, 0);
+
+      const endOfLastWeek = new Date(startOfLastWeek);
+      endOfLastWeek.setDate(startOfLastWeek.getDate() + 7);
+
+      const lastWeekFiles = files.filter(file => {
+        const fileDate = new Date(file.time);
+        return fileDate >= startOfLastWeek && fileDate < endOfLastWeek;
+      });
+
+      return lastWeekFiles.length;
+    }
+
+    function calculateTrendPercent(current, previous) {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    }
+
+    function getTrendDirection(percent) {
+      if (percent > 10) return 'up';
+      if (percent < -10) return 'down';
+      return 'stable';
+    }
+
+    function updateTrendStatistics(files) {
+      // Calculate today new
+      const todayCount = getTodayCount(files);
+      const yesterdayCount = getYesterdayCount(files);
+      const todayPercent = calculateTrendPercent(todayCount, yesterdayCount);
+      const todayDirection = getTrendDirection(todayPercent);
+
+      document.getElementById('statTodayNew').textContent = todayCount;
+
+      const todayTrendEl = document.getElementById('statTodayTrend');
+      if (yesterdayCount > 0 || todayCount > 0) {
+        const arrow = todayDirection === 'up' ? '↑' : todayDirection === 'down' ? '↓' : '→';
+        const sign = todayPercent > 0 ? '+' : '';
+        todayTrendEl.innerHTML = `
+          <span class="trend-indicator trend-${todayDirection}">
+            ${arrow} ${sign}${todayPercent}%
+          </span>
+          <span class="trend-desc">较昨日</span>
+        `;
+      } else {
+        todayTrendEl.innerHTML = '<span class="trend-desc">暂无对比</span>';
+      }
+
+      // Calculate week new
+      const weekCount = getThisWeekCount(files);
+      const lastWeekCount = getLastWeekCount(files);
+      const weekPercent = calculateTrendPercent(weekCount, lastWeekCount);
+      const weekDirection = getTrendDirection(weekPercent);
+
+      document.getElementById('statWeekNew').textContent = weekCount;
+
+      const weekTrendEl = document.getElementById('statWeekTrend');
+      if (lastWeekCount > 0 || weekCount > 0) {
+        const arrow = weekDirection === 'up' ? '↑' : weekDirection === 'down' ? '↓' : '→';
+        const sign = weekPercent > 0 ? '+' : '';
+        weekTrendEl.innerHTML = `
+          <span class="trend-indicator trend-${weekDirection}">
+            ${arrow} ${sign}${weekPercent}%
+          </span>
+          <span class="trend-desc">较上周</span>
+        `;
+      } else {
+        weekTrendEl.innerHTML = '<span class="trend-desc">暂无对比</span>';
+      }
     }
 
     // Search handler with debounce
@@ -2754,6 +2964,9 @@
 
         // Store files globally for filtering
         allFiles = files;
+
+        // Calculate today and week statistics
+        updateTrendStatistics(files);
 
         // Show batch buttons and search/filter container
         downloadAllBtn.style.display = 'block';

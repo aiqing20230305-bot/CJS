@@ -673,6 +673,49 @@ async function testBatchOperationsUI() {
   }
 }
 
+// Test 17: 趋势统计UI测试
+async function testTrendStatisticsUI() {
+  log('\n测试 17: 趋势统计 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check new stat cards
+    assert(html.includes('id="statTodayNew"'), '今日新增卡片存在');
+    assert(html.includes('id="statWeekNew"'), '本周新增卡片存在');
+    assert(html.includes('id="statTodayTrend"'), '今日趋势指示器存在');
+    assert(html.includes('id="statWeekTrend"'), '本周趋势指示器存在');
+
+    // Check trend calculation functions
+    assert(html.includes('function aggregateByDay('), 'aggregateByDay 函数存在');
+    assert(html.includes('function filterByTimeRange('), 'filterByTimeRange 函数存在');
+    assert(html.includes('function getTodayCount('), 'getTodayCount 函数存在');
+    assert(html.includes('function getYesterdayCount('), 'getYesterdayCount 函数存在');
+    assert(html.includes('function getThisWeekCount('), 'getThisWeekCount 函数存在');
+    assert(html.includes('function getLastWeekCount('), 'getLastWeekCount 函数存在');
+    assert(html.includes('function calculateTrendPercent('), 'calculateTrendPercent 函数存在');
+    assert(html.includes('function getTrendDirection('), 'getTrendDirection 函数存在');
+    assert(html.includes('function updateTrendStatistics('), 'updateTrendStatistics 函数存在');
+
+    // Check CSS classes
+    assert(html.includes('.stat-trend'), '趋势样式存在');
+    assert(html.includes('.trend-indicator'), '趋势指示器样式存在');
+    assert(html.includes('.trend-up'), '上升趋势样式存在');
+    assert(html.includes('.trend-down'), '下降趋势样式存在');
+    assert(html.includes('.trend-stable'), '持平趋势样式存在');
+
+    // Check icons
+    assert(html.includes('📈'), '今日新增图标存在');
+    assert(html.includes('📅'), '本周新增图标存在');
+
+    log('  ✓ 所有趋势统计UI元素验证通过');
+  } catch (error) {
+    assert(false, `趋势统计UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -695,6 +738,7 @@ async function runTests() {
   await testFilterPersistenceUI();
   await testPresetUI();
   await testRestoreBannerUI();
+  await testTrendStatisticsUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
