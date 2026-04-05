@@ -1,7 +1,7 @@
 {
   "name": "super-data",
-  "version": "2.3.0",
-  "description": "超级数据 - 社交平台内容采集与分析 (Visualization)",
+  "version": "2.4.0",
+  "description": "超级数据 - 社交平台内容采集与分析 (Export)",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -22,6 +22,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/gemini-cli": "^0.36.0",
-    "archiver": "^7.0.1"
+    "archiver": "^7.0.1",
+    "xlsx": "^0.18.5"
   }
 }

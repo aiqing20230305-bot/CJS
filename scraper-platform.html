@@ -1399,6 +1399,7 @@
             <td>${file.size}</td>
             <td>
               <button class="btn-preview" onclick="openPreview('${file.filename}')">👁️ 预览</button>
+              <button class="btn-download" onclick="exportToExcel('${file.filename}')" style="background: #0f7b6c; border-color: #0f7b6c; color: white;">📊 Excel</button>
               <button class="btn-download" onclick="downloadFile('${file.filename}')">下载</button>
             </td>
           `;
@@ -1417,6 +1418,18 @@
       const link = document.createElement('a');
       link.href = `/api/download/${filename}`;
       link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Export to Excel
+    function exportToExcel(filename) {
+      // 创建隐藏的下载链接
+      const link = document.createElement('a');
+      link.href = `/api/export/${encodeURIComponent(filename)}`;
+      link.download = filename.replace('.json', '.xlsx');
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();

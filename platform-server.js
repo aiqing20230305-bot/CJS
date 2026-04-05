@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import archiver from 'archiver';
+import xlsx from 'xlsx';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -428,6 +429,77 @@ const server = http.createServer(async (req, res) => {
       console.error('Download error:', error);
       res.writeHead(404);
       res.end('File not found');
+    }
+    return;
+  }
+
+  // API: Export to Excel
+  if (url.pathname.startsWith('/api/export/') && req.method === 'GET') {
+    try {
+      const filename = decodeURIComponent(url.pathname.replace('/api/export/', ''));
+      const filepath = path.join(__dirname, 'data', filename);
+
+      console.log('Export request:', { filename, filepath });
+
+      // Read JSON file
+      const content = await fs.readFile(filepath, 'utf-8');
+      const jsonData = JSON.parse(content);
+
+      // Flatten nested JSON to rows
+      function flattenObject(obj, prefix = '') {
+        let result = {};
+        for (let key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            const newKey = prefix ? `${prefix}.${key}` : key;
+            if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+              Object.assign(result, flattenObject(obj[key], newKey));
+            } else if (Array.isArray(obj[key])) {
+              result[newKey] = JSON.stringify(obj[key]);
+            } else {
+              result[newKey] = obj[key];
+            }
+          }
+        }
+        return result;
+      }
+
+      // Create workbook
+      const wb = xlsx.utils.book_new();
+
+      // Convert JSON to worksheet
+      let wsData = [];
+
+      if (Array.isArray(jsonData)) {
+        // If root is array, flatten each item
+        wsData = jsonData.map(item => flattenObject(item));
+      } else {
+        // If root is object, flatten it
+        wsData = [flattenObject(jsonData)];
+      }
+
+      // Create worksheet from data
+      const ws = xlsx.utils.json_to_sheet(wsData);
+
+      // Add worksheet to workbook
+      xlsx.utils.book_append_sheet(wb, ws, '数据');
+
+      // Generate Excel file buffer
+      const excelBuffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      // Set filename for Excel
+      const excelFilename = filename.replace('.json', '.xlsx');
+      const encodedExcelName = encodeURIComponent(excelFilename);
+
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedExcelName}`,
+        'Content-Length': excelBuffer.length
+      });
+      res.end(excelBuffer);
+    } catch (error) {
+      console.error('Export error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
     }
     return;
   }
