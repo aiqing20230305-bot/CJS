@@ -579,6 +579,38 @@
       border-color: var(--accent);
     }
 
+    /* Statistics Cards */
+    .stat-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
     /* Responsive */
     @media (max-width: 767px) {
       .container {
@@ -744,6 +776,36 @@
         <button id="downloadAllBtn" class="btn btn-secondary" onclick="downloadAll()" style="display: none; padding: 8px 16px; font-size: 14px;">
           📦 批量下载
         </button>
+      </div>
+
+      <!-- Statistics Cards -->
+      <div id="statsCards" style="display: none; margin-bottom: 24px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+          <!-- Total Files -->
+          <div class="stat-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-value" id="statTotalFiles">0</div>
+            <div class="stat-label">数据包总数</div>
+          </div>
+          <!-- Total Size -->
+          <div class="stat-card">
+            <div class="stat-icon">💾</div>
+            <div class="stat-value" id="statTotalSize">0 MB</div>
+            <div class="stat-label">总数据量</div>
+          </div>
+          <!-- Latest File -->
+          <div class="stat-card">
+            <div class="stat-icon">🕒</div>
+            <div class="stat-value" id="statLatest" style="font-size: 14px;">-</div>
+            <div class="stat-label">最新抓取</div>
+          </div>
+          <!-- Avg File Size -->
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value" id="statAvgSize">0 MB</div>
+            <div class="stat-label">平均大小</div>
+          </div>
+        </div>
       </div>
 
       <div id="dataPackagesArea">
@@ -1018,7 +1080,62 @@
     }
 
     // Load real file list from backend
+    // Load statistics
+    async function loadStatistics() {
+      try {
+        const response = await fetch('/api/stats');
+        const stats = await response.json();
+
+        const statsCards = document.getElementById('statsCards');
+
+        if (stats.totalFiles === 0) {
+          statsCards.style.display = 'none';
+          return;
+        }
+
+        // Show cards
+        statsCards.style.display = 'block';
+
+        // Update values
+        document.getElementById('statTotalFiles').textContent = stats.totalFiles;
+        document.getElementById('statTotalSize').textContent = stats.totalSizeFormatted;
+        document.getElementById('statAvgSize').textContent = stats.avgFileSize;
+
+        // Format latest file time
+        if (stats.latestFile) {
+          const latestTime = new Date(stats.latestFile.time);
+          const now = new Date();
+          const diffMs = now - latestTime;
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+
+          let timeStr;
+          if (diffMins < 1) {
+            timeStr = '刚刚';
+          } else if (diffMins < 60) {
+            timeStr = `${diffMins} 分钟前`;
+          } else if (diffHours < 24) {
+            timeStr = `${diffHours} 小时前`;
+          } else if (diffDays < 7) {
+            timeStr = `${diffDays} 天前`;
+          } else {
+            timeStr = latestTime.toLocaleDateString('zh-CN');
+          }
+
+          document.getElementById('statLatest').textContent = timeStr;
+        } else {
+          document.getElementById('statLatest').textContent = '-';
+        }
+      } catch (error) {
+        console.error('加载统计失败:', error);
+      }
+    }
+
     async function loadDataPackages() {
+      // Load statistics first
+      await loadStatistics();
+
       try {
         const response = await fetch('/api/files');
         const files = await response.json();

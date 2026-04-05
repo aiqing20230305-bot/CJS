@@ -224,7 +224,38 @@ async function testSSEConnection() {
   }
 }
 
-// Test 6: 预览API测试
+// Test 6: 统计API测试
+async function testStatsAPI() {
+  log('\n测试 6: 统计 API', colors.blue);
+  try {
+    const res = await makeRequest('/api/stats');
+    assert(res.statusCode === 200, '统计 API 返回 200 状态码');
+    assert(res.headers['content-type'].includes('application/json'), '返回 JSON 格式');
+    assert(res.body.length > 0, '统计内容不为空');
+
+    const stats = JSON.parse(res.body);
+    assert(typeof stats.totalFiles === 'number', '包含 totalFiles 字段（数字）');
+    assert(typeof stats.totalSize === 'number', '包含 totalSize 字段（数字）');
+    assert(typeof stats.totalSizeFormatted === 'string', '包含 totalSizeFormatted 字段（字符串）');
+    assert(typeof stats.avgFileSize === 'string', '包含 avgFileSize 字段（字符串）');
+    assert(typeof stats.typeDistribution === 'object', '包含 typeDistribution 字段（对象）');
+    assert(typeof stats.generatedAt === 'string', '包含 generatedAt 字段（字符串）');
+
+    log(`  总文件数: ${stats.totalFiles}`);
+    log(`  总大小: ${stats.totalSizeFormatted}`);
+    log(`  平均大小: ${stats.avgFileSize}`);
+
+    if (stats.latestFile) {
+      assert(typeof stats.latestFile.filename === 'string', '最新文件包含 filename');
+      assert(typeof stats.latestFile.time === 'string', '最新文件包含 time');
+      log(`  最新文件: ${stats.latestFile.filename}`);
+    }
+  } catch (error) {
+    assert(false, `统计 API 测试失败: ${error.message}`);
+  }
+}
+
+// Test 7: 预览API测试
 async function testPreviewAPI() {
   log('\n测试 6: 预览 API', colors.blue);
   try {
@@ -258,7 +289,7 @@ async function testPreviewAPI() {
   }
 }
 
-// Test 7: 抓取API测试（不实际执行）
+// Test 8: 抓取API测试（不实际执行）
 async function testScrapeAPI() {
   log('\n测试 6: 抓取 API 接口验证', colors.blue);
   try {
@@ -302,6 +333,7 @@ async function runTests() {
   await testSingleDownload();
   await testBatchDownload();
   await testSSEConnection();
+  await testStatsAPI();
   await testPreviewAPI();
   await testScrapeAPI();
 

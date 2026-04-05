@@ -1,7 +1,7 @@
 {
   "name": "super-data",
-  "version": "2.1.0",
-  "description": "超级数据 - 社交平台内容采集与分析 (Vision)",
+  "version": "2.2.0",
+  "description": "超级数据 - 社交平台内容采集与分析 (Insight)",
   "main": "index.js",
   "type": "module",
   "scripts": {

@@ -262,6 +262,90 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API: Get statistics
+  if (url.pathname === '/api/stats' && req.method === 'GET') {
+    try {
+      const dataDir = path.join(__dirname, 'data');
+      await fs.mkdir(dataDir, { recursive: true });
+
+      const files = await fs.readdir(dataDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      if (jsonFiles.length === 0) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          totalFiles: 0,
+          totalSize: 0,
+          totalSizeFormatted: '0 MB',
+          latestFile: null,
+          typeDistribution: {},
+          avgFileSize: 0
+        }));
+        return;
+      }
+
+      // Get file stats
+      const fileStats = await Promise.all(
+        jsonFiles.map(async filename => {
+          const filepath = path.join(dataDir, filename);
+          const stats = await fs.stat(filepath);
+
+          // Extract type from filename (e.g., "market_brand_123.json" -> "market")
+          const typeMatch = filename.match(/^(market|videos|competitors|report|full|test)/i);
+          const type = typeMatch ? typeMatch[1].toLowerCase() : 'other';
+
+          return {
+            filename,
+            size: stats.size,
+            mtime: stats.mtime,
+            type
+          };
+        })
+      );
+
+      // Calculate statistics
+      const totalSize = fileStats.reduce((sum, f) => sum + f.size, 0);
+      const latestFile = fileStats.reduce((latest, f) =>
+        (!latest || f.mtime > latest.mtime) ? f : latest
+      , null);
+
+      // Type distribution
+      const typeDistribution = fileStats.reduce((dist, f) => {
+        dist[f.type] = (dist[f.type] || 0) + 1;
+        return dist;
+      }, {});
+
+      // Format size
+      const formatSize = (bytes) => {
+        if (bytes === 0) return '0 MB';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+        if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+      };
+
+      const stats = {
+        totalFiles: jsonFiles.length,
+        totalSize: totalSize,
+        totalSizeFormatted: formatSize(totalSize),
+        avgFileSize: formatSize(totalSize / jsonFiles.length),
+        latestFile: latestFile ? {
+          filename: latestFile.filename,
+          time: latestFile.mtime.toISOString()
+        } : null,
+        typeDistribution,
+        generatedAt: new Date().toISOString()
+      };
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(stats));
+    } catch (error) {
+      console.error('Stats error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+    return;
+  }
+
   // API: List data files
   if (url.pathname === '/api/files' && req.method === 'GET') {
     try {
