@@ -788,6 +788,32 @@
       display: inline-block;
     }
 
+    .btn-export-chart {
+      padding: 8px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-export-chart:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--hover);
+    }
+
+    .btn-export-chart:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
     #canvasTooltip {
       position: absolute;
       background: rgba(0, 0, 0, 0.85);
@@ -799,6 +825,29 @@
       z-index: 1000;
       white-space: nowrap;
       display: none;
+    }
+
+    /* Toast Animations */
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
     }
 
     /* Responsive */
@@ -1622,6 +1671,10 @@
                 <button class="time-range-btn active" data-days="7" onclick="switchTimeRange(7)">7天</button>
                 <button class="time-range-btn" data-days="30" onclick="switchTimeRange(30)">30天</button>
               </div>
+              <!-- Export Button -->
+              <button id="exportChartBtn" class="btn-export-chart" onclick="exportChartToPNG()" title="导出图表为PNG">
+                📥 导出PNG
+              </button>
             </div>
           </div>
           <canvas id="trendChart"></canvas>
@@ -2483,6 +2536,101 @@
 
       // Show container
       document.getElementById('trendChartContainer').style.display = 'block';
+    }
+
+    function exportChartToPNG() {
+      const canvas = document.getElementById('trendChart');
+      const btn = document.getElementById('exportChartBtn');
+
+      if (!canvas) {
+        showToast('导出失败：未找到图表', 'error');
+        return;
+      }
+
+      // Check if canvas has data
+      if (trendChartData.length === 0) {
+        showToast('暂无数据可导出', 'warning');
+        return;
+      }
+
+      try {
+        // Disable button and show loading state
+        btn.disabled = true;
+        btn.textContent = '⏳ 导出中...';
+
+        // Convert canvas to PNG data URL
+        const dataURL = canvas.toDataURL('image/png');
+
+        // Generate filename with timestamp
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/:/g, '-').split('.')[0];
+        const filename = `数据趋势图_${currentTimeRange}天_${timestamp}.png`;
+
+        // Create temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = dataURL;
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success message
+        showToast('图表导出成功！', 'success');
+      } catch (error) {
+        console.error('导出失败:', error);
+        showToast('导出失败：' + error.message, 'error');
+      } finally {
+        // Restore button state
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = '📥 导出PNG';
+        }, 1000);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      // Create toast element
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+
+      // Style toast
+      Object.assign(toast.style, {
+        position: 'fixed',
+        top: '20px',
+        right: '20px',
+        padding: '12px 20px',
+        borderRadius: '6px',
+        fontSize: '14px',
+        fontWeight: '500',
+        color: 'white',
+        zIndex: '10000',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        animation: 'slideIn 0.3s ease-out'
+      });
+
+      // Set background color based on type
+      if (type === 'success') {
+        toast.style.background = '#10b981';
+      } else if (type === 'error') {
+        toast.style.background = '#ef4444';
+      } else if (type === 'warning') {
+        toast.style.background = '#f59e0b';
+      } else {
+        toast.style.background = '#2383e2';
+      }
+
+      // Add to document
+      document.body.appendChild(toast);
+
+      // Auto remove after 3 seconds
+      setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease-in';
+        setTimeout(() => {
+          document.body.removeChild(toast);
+        }, 300);
+      }, 3000);
     }
 
     function setupCanvasInteraction() {

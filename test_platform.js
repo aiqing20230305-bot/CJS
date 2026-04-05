@@ -799,6 +799,39 @@ async function testMultiMetricChartUI() {
   }
 }
 
+// Test 20: 图表导出PNG UI测试
+async function testChartExportUI() {
+  log('\n测试 20: 图表导出PNG UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check export button
+    assert(html.includes('id="exportChartBtn"'), '导出按钮存在');
+    assert(html.includes('class="btn-export-chart"'), '导出按钮class存在');
+    assert(html.includes('📥 导出PNG'), '导出按钮文字存在');
+
+    // Check JavaScript functions
+    assert(html.includes('function exportChartToPNG('), 'exportChartToPNG 函数存在');
+    assert(html.includes('function showToast('), 'showToast 函数存在');
+
+    // Check toast logic
+    assert(html.includes('canvas.toDataURL'), 'Canvas转PNG逻辑存在');
+    assert(html.includes('link.download'), '下载触发逻辑存在');
+
+    // Check CSS styles
+    assert(html.includes('.btn-export-chart'), '导出按钮样式存在');
+    assert(html.includes('@keyframes slideIn'), 'Toast动画slideIn存在');
+    assert(html.includes('@keyframes slideOut'), 'Toast动画slideOut存在');
+
+    log('  ✓ 所有图表导出UI元素验证通过');
+  } catch (error) {
+    assert(false, `图表导出UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -824,6 +857,7 @@ async function runTests() {
   await testTrendStatisticsUI();
   await testCanvasChartUI();
   await testMultiMetricChartUI();
+  await testChartExportUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
