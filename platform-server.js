@@ -433,6 +433,103 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API: Export all files to Excel (multi-sheet)
+  if (url.pathname === '/api/export-all' && req.method === 'GET') {
+    try {
+      const dataDir = path.join(__dirname, 'data');
+      await fs.mkdir(dataDir, { recursive: true });
+
+      const files = await fs.readdir(dataDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      if (jsonFiles.length === 0) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '没有可导出的数据文件' }));
+        return;
+      }
+
+      console.log('Batch export request:', { fileCount: jsonFiles.length });
+
+      // Flatten nested JSON to rows
+      function flattenObject(obj, prefix = '') {
+        let result = {};
+        for (let key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            const newKey = prefix ? `${prefix}.${key}` : key;
+            if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+              Object.assign(result, flattenObject(obj[key], newKey));
+            } else if (Array.isArray(obj[key])) {
+              result[newKey] = JSON.stringify(obj[key]);
+            } else {
+              result[newKey] = obj[key];
+            }
+          }
+        }
+        return result;
+      }
+
+      // Create workbook
+      const wb = xlsx.utils.book_new();
+
+      // Process each file
+      for (const filename of jsonFiles) {
+        const filepath = path.join(dataDir, filename);
+
+        try {
+          const content = await fs.readFile(filepath, 'utf-8');
+          const jsonData = JSON.parse(content);
+
+          // Convert JSON to worksheet data
+          let wsData = [];
+          if (Array.isArray(jsonData)) {
+            wsData = jsonData.map(item => flattenObject(item));
+          } else {
+            wsData = [flattenObject(jsonData)];
+          }
+
+          // Create worksheet
+          const ws = xlsx.utils.json_to_sheet(wsData);
+
+          // Generate sheet name (max 31 chars for Excel)
+          let sheetName = filename.replace('.json', '');
+          if (sheetName.length > 31) {
+            sheetName = sheetName.substring(0, 28) + '...';
+          }
+
+          // Add worksheet to workbook
+          xlsx.utils.book_append_sheet(wb, ws, sheetName);
+
+          console.log(`Added sheet: ${sheetName}`);
+        } catch (error) {
+          console.error(`Error processing ${filename}:`, error.message);
+          // Continue with other files
+        }
+      }
+
+      // Generate Excel file buffer
+      const excelBuffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+      // Set filename with timestamp
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+      const excelFilename = `数据汇总_${timestamp}.xlsx`;
+      const encodedExcelName = encodeURIComponent(excelFilename);
+
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedExcelName}`,
+        'Content-Length': excelBuffer.length
+      });
+      res.end(excelBuffer);
+
+      console.log(`Batch export completed: ${jsonFiles.length} files, ${excelBuffer.length} bytes`);
+    } catch (error) {
+      console.error('Batch export error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+    return;
+  }
+
   // API: Export to Excel
   if (url.pathname.startsWith('/api/export/') && req.method === 'GET') {
     try {

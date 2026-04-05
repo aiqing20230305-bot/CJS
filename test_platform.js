@@ -287,7 +287,42 @@ async function testExcelExport() {
   }
 }
 
-// Test 8: 预览API测试
+// Test 8: 批量Excel导出测试
+async function testBatchExcelExport() {
+  log('\n测试 8: 批量 Excel 导出', colors.blue);
+  try {
+    const res = await makeRequest('/api/export-all');
+
+    if (res.statusCode === 404) {
+      log('  ⚠️  跳过：没有可导出的文件', colors.yellow);
+      return;
+    }
+
+    assert(res.statusCode === 200, '批量Excel导出返回 200 状态码');
+    assert(res.headers['content-type'].includes('spreadsheetml'), '返回 Excel 格式');
+    assert(res.headers['content-disposition'], '包含 Content-Disposition 头');
+    assert(res.body.length > 0, 'Excel 文件内容不为空');
+
+    // Check Excel magic number (PK zip signature)
+    const isExcel = res.body.startsWith('PK');
+    assert(isExcel, '返回的是有效的 Excel 文件（ZIP格式）');
+
+    log(`  Excel 文件大小: ${(res.body.length / 1024).toFixed(2)} KB`);
+
+    // Check filename pattern
+    const filenameMatch = res.headers['content-disposition'].match(/filename\*=UTF-8''(.+)/);
+    if (filenameMatch) {
+      const filename = decodeURIComponent(filenameMatch[1]);
+      assert(filename.includes('数据汇总'), '文件名包含"数据汇总"');
+      assert(filename.endsWith('.xlsx'), '文件名以.xlsx结尾');
+      log(`  文件名: ${filename}`);
+    }
+  } catch (error) {
+    assert(false, `批量Excel导出测试失败: ${error.message}`);
+  }
+}
+
+// Test 9: 预览API测试
 async function testPreviewAPI() {
   log('\n测试 6: 预览 API', colors.blue);
   try {
@@ -321,7 +356,7 @@ async function testPreviewAPI() {
   }
 }
 
-// Test 9: 抓取API测试（不实际执行）
+// Test 10: 抓取API测试（不实际执行）
 async function testScrapeAPI() {
   log('\n测试 6: 抓取 API 接口验证', colors.blue);
   try {
@@ -367,6 +402,7 @@ async function runTests() {
   await testSSEConnection();
   await testStatsAPI();
   await testExcelExport();
+  await testBatchExcelExport();
   await testPreviewAPI();
   await testScrapeAPI();
 
