@@ -859,6 +859,46 @@ async function testExtendedTimeRangeUI() {
   }
 }
 
+// Test 22: 图表类型切换UI测试
+async function testChartTypeUI() {
+  log('\n测试 22: 图表类型切换 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check chart type selector
+    assert(html.includes('class="chart-type-selector"'), '图表类型选择器存在');
+    assert(html.includes('class="chart-type-btn'), '图表类型按钮存在');
+
+    // Check all chart type buttons
+    assert(html.includes('data-type="line"'), '折线图按钮存在');
+    assert(html.includes('data-type="bar"'), '柱状图按钮存在');
+    assert(html.includes('data-type="area"'), '面积图按钮存在');
+
+    // Check JavaScript functions
+    assert(html.includes('function drawBarChart('), 'drawBarChart 函数存在');
+    assert(html.includes('function drawAreaChart('), 'drawAreaChart 函数存在');
+    assert(html.includes('function switchChartType('), 'switchChartType 函数存在');
+
+    // Check state variable
+    assert(html.includes('currentChartType'), 'currentChartType 状态变量存在');
+
+    // Check CSS styles
+    assert(html.includes('.chart-type-selector'), '图表类型选择器样式存在');
+    assert(html.includes('.chart-type-btn'), '图表类型按钮样式存在');
+
+    // Check updateTrendChart supports different chart types
+    assert(html.includes('if (currentChartType === \'bar\')'), 'updateTrendChart支持柱状图');
+    assert(html.includes('if (currentChartType === \'area\')'), 'updateTrendChart支持面积图');
+
+    log('  ✓ 所有图表类型切换UI元素验证通过');
+  } catch (error) {
+    assert(false, `图表类型切换UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -886,6 +926,7 @@ async function runTests() {
   await testMultiMetricChartUI();
   await testChartExportUI();
   await testExtendedTimeRangeUI();
+  await testChartTypeUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
