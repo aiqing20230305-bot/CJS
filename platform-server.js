@@ -174,16 +174,23 @@ const server = http.createServer(async (req, res) => {
   // API: Download file
   if (url.pathname.startsWith('/api/download/') && req.method === 'GET') {
     try {
-      const filename = url.pathname.replace('/api/download/', '');
+      const filename = decodeURIComponent(url.pathname.replace('/api/download/', ''));
       const filepath = path.join(__dirname, 'data', filename);
 
+      console.log('Download request:', { filename, filepath });
+
       const content = await fs.readFile(filepath);
+
+      // Encode filename for Content-Disposition header
+      const encodedFilename = encodeURIComponent(filename);
+
       res.writeHead(200, {
         'Content-Type': 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="${filename}"`
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedFilename}`
       });
       res.end(content);
     } catch (error) {
+      console.error('Download error:', error);
       res.writeHead(404);
       res.end('File not found');
     }
