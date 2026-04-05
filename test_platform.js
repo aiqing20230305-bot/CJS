@@ -759,6 +759,46 @@ async function testCanvasChartUI() {
   }
 }
 
+// Test 19: 多指标趋势对比UI测试
+async function testMultiMetricChartUI() {
+  log('\n测试 19: 多指标趋势对比 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check metric selector elements
+    assert(html.includes('class="metric-selector"'), '指标选择器存在');
+    assert(html.includes('id="showCountCheckbox"'), '数量指标checkbox存在');
+    assert(html.includes('id="showSizeCheckbox"'), '大小指标checkbox存在');
+    assert(html.includes('class="metric-checkbox"'), '指标checkbox样式存在');
+    assert(html.includes('class="metric-label"'), '指标标签样式存在');
+    assert(html.includes('class="metric-color"'), '指标颜色方块存在');
+
+    // Check metric labels
+    assert(html.includes('数据包数量'), '数量指标标签存在');
+    assert(html.includes('文件大小'), '大小指标标签存在');
+
+    // Check JavaScript functions
+    assert(html.includes('function toggleMetric('), 'toggleMetric 函数存在');
+    assert(html.includes('function parseSizeToBytes('), 'parseSizeToBytes 函数存在');
+    assert(html.includes('function formatBytes('), 'formatBytes 函数存在');
+
+    // Check state variables
+    assert(html.includes('showCountMetric'), 'showCountMetric 状态变量存在');
+    assert(html.includes('showSizeMetric'), 'showSizeMetric 状态变量存在');
+
+    // Check CSS styles
+    assert(html.includes('.metric-selector'), '指标选择器样式存在');
+    assert(html.includes('.metric-checkbox'), '指标checkbox样式存在');
+
+    log('  ✓ 所有多指标对比UI元素验证通过');
+  } catch (error) {
+    assert(false, `多指标对比UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -783,6 +823,7 @@ async function runTests() {
   await testRestoreBannerUI();
   await testTrendStatisticsUI();
   await testCanvasChartUI();
+  await testMultiMetricChartUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);

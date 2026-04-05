@@ -1,6 +1,6 @@
 {
   "name": "super-data",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "超级数据 - 社交平台内容采集与分析 (Export)",
   "main": "index.js",
   "type": "module",

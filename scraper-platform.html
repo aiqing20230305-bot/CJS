@@ -753,6 +753,41 @@
       border-color: var(--accent);
     }
 
+    .metric-selector {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .metric-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .metric-checkbox input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .metric-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .metric-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
     #canvasTooltip {
       position: absolute;
       background: rgba(0, 0, 0, 0.85);
@@ -1560,12 +1595,33 @@
 
         <!-- Canvas Trend Chart -->
         <div id="trendChartContainer" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
             <h3 style="font-size: 16px; font-weight: 600; color: var(--text);">📈 数据趋势分析</h3>
-            <div class="time-range-selector">
-              <span style="font-size: 14px; color: var(--text-secondary);">时间范围：</span>
-              <button class="time-range-btn active" data-days="7" onclick="switchTimeRange(7)">7天</button>
-              <button class="time-range-btn" data-days="30" onclick="switchTimeRange(30)">30天</button>
+            <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+              <!-- Metric Selector -->
+              <div class="metric-selector">
+                <span style="font-size: 14px; color: var(--text-secondary); margin-right: 12px;">显示指标：</span>
+                <label class="metric-checkbox">
+                  <input type="checkbox" id="showCountCheckbox" checked onchange="toggleMetric('count')">
+                  <span class="metric-label" style="color: #2383e2;">
+                    <span class="metric-color" style="background: #2383e2;"></span>
+                    数据包数量
+                  </span>
+                </label>
+                <label class="metric-checkbox">
+                  <input type="checkbox" id="showSizeCheckbox" checked onchange="toggleMetric('size')">
+                  <span class="metric-label" style="color: #10b981;">
+                    <span class="metric-color" style="background: #10b981;"></span>
+                    文件大小
+                  </span>
+                </label>
+              </div>
+              <!-- Time Range Selector -->
+              <div class="time-range-selector">
+                <span style="font-size: 14px; color: var(--text-secondary);">时间范围：</span>
+                <button class="time-range-btn active" data-days="7" onclick="switchTimeRange(7)">7天</button>
+                <button class="time-range-btn" data-days="30" onclick="switchTimeRange(30)">30天</button>
+              </div>
             </div>
           </div>
           <canvas id="trendChart"></canvas>
@@ -2188,6 +2244,23 @@
     // Canvas Trend Chart Functions
     let currentTimeRange = 7; // Default 7 days
     let trendChartData = [];
+    let showCountMetric = true;
+    let showSizeMetric = true;
+
+    function parseSizeToBytes(sizeStr) {
+      const units = { 'KB': 1024, 'MB': 1024 * 1024, 'GB': 1024 * 1024 * 1024, 'B': 1 };
+      const match = sizeStr.match(/^([\d.]+)\s*([A-Z]+)$/);
+      if (!match) return 0;
+      return parseFloat(match[1]) * (units[match[2]] || 1);
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+    }
 
     function drawTrendChart(canvas, data) {
       const ctx = canvas.getContext('2d');
@@ -2201,7 +2274,7 @@
 
       const width = rect.width;
       const height = rect.height;
-      const padding = { top: 30, right: 40, bottom: 50, left: 50 };
+      const padding = { top: 30, right: 60, bottom: 50, left: 60 };
       const chartWidth = width - padding.left - padding.right;
       const chartHeight = height - padding.top - padding.bottom;
 
@@ -2216,21 +2289,20 @@
         return;
       }
 
-      // Calculate max value for Y axis
+      // Calculate max values for dual Y axes
       const maxCount = Math.max(...data.map(d => d.count), 1);
-      const yAxisMax = Math.ceil(maxCount * 1.1); // Add 10% padding
+      const maxSize = Math.max(...data.map(d => d.totalSize), 1);
+      const countAxisMax = Math.ceil(maxCount * 1.1);
+      const sizeAxisMax = maxSize * 1.1;
 
-      // Draw grid lines and Y axis labels
+      // Draw grid lines
       ctx.strokeStyle = '#e9e9e7';
       ctx.lineWidth = 1;
-      ctx.fillStyle = '#9b9a97';
       ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-      ctx.textAlign = 'right';
 
       const gridLines = 5;
       for (let i = 0; i <= gridLines; i++) {
         const y = padding.top + (chartHeight / gridLines) * i;
-        const value = Math.round(yAxisMax - (yAxisMax / gridLines) * i);
 
         // Grid line
         ctx.beginPath();
@@ -2238,13 +2310,27 @@
         ctx.lineTo(padding.left + chartWidth, y);
         ctx.stroke();
 
-        // Y axis label
-        ctx.fillText(value.toString(), padding.left - 10, y + 4);
+        // Left Y axis labels (count) - blue
+        if (showCountMetric) {
+          const countValue = Math.round(countAxisMax - (countAxisMax / gridLines) * i);
+          ctx.fillStyle = '#2383e2';
+          ctx.textAlign = 'right';
+          ctx.fillText(countValue.toString(), padding.left - 10, y + 4);
+        }
+
+        // Right Y axis labels (size) - green
+        if (showSizeMetric) {
+          const sizeValue = sizeAxisMax - (sizeAxisMax / gridLines) * i;
+          ctx.fillStyle = '#10b981';
+          ctx.textAlign = 'left';
+          ctx.fillText(formatBytes(sizeValue), padding.left + chartWidth + 10, y + 4);
+        }
       }
 
       // Draw X axis labels
+      ctx.fillStyle = '#9b9a97';
       ctx.textAlign = 'center';
-      const labelInterval = Math.ceil(data.length / 7); // Show max 7 labels
+      const labelInterval = Math.ceil(data.length / 7);
       data.forEach((d, i) => {
         if (i % labelInterval === 0 || i === data.length - 1) {
           const x = padding.left + (chartWidth / (data.length - 1)) * i;
@@ -2253,53 +2339,99 @@
         }
       });
 
-      // Draw line chart
-      ctx.strokeStyle = '#2383e2';
-      ctx.lineWidth = 2;
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-
-      ctx.beginPath();
-      data.forEach((d, i) => {
-        const x = padding.left + (chartWidth / (data.length - 1)) * i;
-        const y = padding.top + chartHeight - (d.count / yAxisMax) * chartHeight;
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-      ctx.stroke();
-
-      // Draw gradient fill
-      ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
-      ctx.lineTo(padding.left, padding.top + chartHeight);
-      ctx.closePath();
-
-      const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
-      gradient.addColorStop(0, 'rgba(35, 131, 226, 0.2)');
-      gradient.addColorStop(1, 'rgba(35, 131, 226, 0.0)');
-      ctx.fillStyle = gradient;
-      ctx.fill();
-
-      // Draw data points
-      ctx.fillStyle = '#2383e2';
-      data.forEach((d, i) => {
-        const x = padding.left + (chartWidth / (data.length - 1)) * i;
-        const y = padding.top + chartHeight - (d.count / yAxisMax) * chartHeight;
-
-        ctx.beginPath();
-        ctx.arc(x, y, 4, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
       // Store data for interaction
       trendChartData = data.map((d, i) => {
         const x = padding.left + (chartWidth / (data.length - 1)) * i;
-        const y = padding.top + chartHeight - (d.count / yAxisMax) * chartHeight;
-        return { ...d, x, y };
+        const countY = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+        const sizeY = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+        return { ...d, x, countY, sizeY };
       });
+
+      // Draw count line (blue)
+      if (showCountMetric) {
+        ctx.strokeStyle = '#2383e2';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        data.forEach((d, i) => {
+          const x = padding.left + (chartWidth / (data.length - 1)) * i;
+          const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+
+        // Draw gradient fill for count
+        ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+        ctx.lineTo(padding.left, padding.top + chartHeight);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+        gradient.addColorStop(0, 'rgba(35, 131, 226, 0.15)');
+        gradient.addColorStop(1, 'rgba(35, 131, 226, 0.0)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Draw count data points
+        ctx.fillStyle = '#2383e2';
+        data.forEach((d, i) => {
+          const x = padding.left + (chartWidth / (data.length - 1)) * i;
+          const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      // Draw size line (green)
+      if (showSizeMetric) {
+        ctx.strokeStyle = '#10b981';
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        data.forEach((d, i) => {
+          const x = padding.left + (chartWidth / (data.length - 1)) * i;
+          const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        });
+        ctx.stroke();
+
+        // Draw gradient fill for size
+        ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+        ctx.lineTo(padding.left, padding.top + chartHeight);
+        ctx.closePath();
+
+        const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+        gradient.addColorStop(0, 'rgba(16, 185, 129, 0.15)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Draw size data points
+        ctx.fillStyle = '#10b981';
+        data.forEach((d, i) => {
+          const x = padding.left + (chartWidth / (data.length - 1)) * i;
+          const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+
+          ctx.beginPath();
+          ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
     }
 
     function formatChartDate(dateStr) {
@@ -2307,6 +2439,17 @@
       const month = date.getMonth() + 1;
       const day = date.getDate();
       return `${month}/${day}`;
+    }
+
+    function toggleMetric(metricType) {
+      if (metricType === 'count') {
+        showCountMetric = document.getElementById('showCountCheckbox').checked;
+      } else if (metricType === 'size') {
+        showSizeMetric = document.getElementById('showSizeCheckbox').checked;
+      }
+
+      // Redraw chart
+      updateTrendChart();
     }
 
     function switchTimeRange(days) {
@@ -2352,27 +2495,48 @@
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        // Find closest data point
+        // Find closest data point (check both count and size lines)
         let closestPoint = null;
         let minDistance = Infinity;
 
         trendChartData.forEach(point => {
-          const distance = Math.sqrt(
-            Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2)
-          );
+          // Distance to count point
+          if (showCountMetric && point.countY) {
+            const distanceCount = Math.sqrt(
+              Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.countY, 2)
+            );
+            if (distanceCount < minDistance && distanceCount < 20) {
+              minDistance = distanceCount;
+              closestPoint = point;
+            }
+          }
 
-          if (distance < minDistance && distance < 20) {
-            minDistance = distance;
-            closestPoint = point;
+          // Distance to size point
+          if (showSizeMetric && point.sizeY) {
+            const distanceSize = Math.sqrt(
+              Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.sizeY, 2)
+            );
+            if (distanceSize < minDistance && distanceSize < 20) {
+              minDistance = distanceSize;
+              closestPoint = point;
+            }
           }
         });
 
         if (closestPoint) {
-          // Show tooltip
+          // Show tooltip with multi-metric data
           tooltip.style.display = 'block';
           tooltip.style.left = `${e.clientX + 10}px`;
           tooltip.style.top = `${e.clientY - 30}px`;
-          tooltip.textContent = `${closestPoint.date}: ${closestPoint.count}个数据包`;
+
+          let tooltipHTML = `<div style="font-weight: 600; margin-bottom: 4px;">${closestPoint.date}</div>`;
+          if (showCountMetric) {
+            tooltipHTML += `<div style="color: #2383e2;">📦 ${closestPoint.count}个数据包</div>`;
+          }
+          if (showSizeMetric) {
+            tooltipHTML += `<div style="color: #10b981;">💾 ${formatBytes(closestPoint.totalSize)}</div>`;
+          }
+          tooltip.innerHTML = tooltipHTML;
 
           // Change cursor
           canvas.style.cursor = 'pointer';
