@@ -43,12 +43,20 @@ function assert(condition, testName) {
 function makeRequest(path, options = {}) {
   return new Promise((resolve, reject) => {
     const url = new URL(path, BASE_URL);
+    const body = options.body || '';
+    const headers = options.headers || {};
+
+    // Add Content-Length header for requests with body
+    if (body && options.method && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(options.method)) {
+      headers['Content-Length'] = Buffer.byteLength(body);
+    }
+
     const reqOptions = {
       hostname: url.hostname,
       port: url.port,
       path: url.pathname + url.search,
       method: options.method || 'GET',
-      headers: options.headers || {},
+      headers,
       timeout: TIMEOUT
     };
 
@@ -66,8 +74,8 @@ function makeRequest(path, options = {}) {
       reject(new Error('Request timeout'));
     });
 
-    if (options.body) {
-      req.write(options.body);
+    if (body) {
+      req.write(body);
     }
 
     req.end();
@@ -437,6 +445,122 @@ async function testSearchFilterUI() {
   }
 }
 
+// Test 12: 文件删除API测试
+async function testDeleteAPI() {
+  log('\n测试 12: 文件删除 API', colors.blue);
+  try {
+    // Create a temporary test file
+    const testFilename = `test_delete_${Date.now()}.json`;
+    const testData = { test: 'data', timestamp: Date.now() };
+
+    const fs = await import('fs');
+    const path = await import('path');
+    const testFilePath = path.join(process.cwd(), 'data', testFilename);
+
+    // Write test file
+    await fs.promises.writeFile(testFilePath, JSON.stringify(testData));
+    log(`  创建测试文件: ${testFilename}`);
+
+    // Test DELETE API
+    const res = await makeRequest('/api/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: [testFilename] })
+    });
+
+    assert(res.statusCode === 200, '删除API返回 200 状态码');
+
+    const result = JSON.parse(res.body);
+    assert(result.success === true, 'API返回 success: true');
+    assert(result.deleted === 1, '成功删除1个文件');
+    assert(result.failed === 0, '失败数为0');
+
+    // Verify file is deleted
+    const fileExists = await fs.promises.access(testFilePath).then(() => true).catch(() => false);
+    assert(!fileExists, '文件已被删除');
+
+    log('  ✓ 文件删除成功');
+
+    // Test security: path traversal
+    const securityRes = await makeRequest('/api/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: ['../test.json'] })
+    });
+
+    const securityResult = JSON.parse(securityRes.body);
+    assert(securityResult.failed === 1, '路径遍历攻击被阻止');
+
+    // Test empty array
+    const emptyRes = await makeRequest('/api/files', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: [] })
+    });
+
+    assert(emptyRes.statusCode === 400, '空文件列表返回400错误');
+
+    log('  ✓ 安全性验证通过');
+  } catch (error) {
+    assert(false, `文件删除API测试失败: ${error.message}`);
+  }
+}
+
+// Test 13: 批量操作UI测试
+async function testBatchOperationsUI() {
+  log('\n测试 13: 批量操作 UI 元素', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check checkbox elements
+    assert(html.includes('id="selectAllCheckbox"'), '全选checkbox存在');
+    assert(html.includes('class="file-checkbox"'), '文件checkbox样式存在');
+
+    // Check selection info
+    assert(html.includes('id="selectionInfo"'), '选择信息区域存在');
+    assert(html.includes('id="selectionCount"'), '选择数量显示存在');
+
+    // Check batch operation buttons
+    assert(html.includes('id="batchOperations"'), '批量操作按钮组存在');
+    assert(html.includes('class="btn-batch-delete"'), '批量删除按钮存在');
+    assert(html.includes('class="btn-batch-action"'), '批量操作按钮样式存在');
+    assert(html.includes('class="btn-clear-selection"'), '取消选择按钮存在');
+
+    // Check delete modal
+    assert(html.includes('id="deleteModal"'), '删除确认弹窗存在');
+    assert(html.includes('class="delete-modal-content"'), '删除弹窗内容区域存在');
+    assert(html.includes('id="deleteCount"'), '删除数量显示存在');
+    assert(html.includes('id="deleteFileList"'), '删除文件列表存在');
+    assert(html.includes('id="deleteVerificationInput"'), '删除验证输入框存在');
+    assert(html.includes('id="confirmDeleteBtn"'), '确认删除按钮存在');
+
+    // Check JavaScript functions
+    assert(html.includes('function handleSelectAll('), 'handleSelectAll 函数存在');
+    assert(html.includes('function handleSelectFile('), 'handleSelectFile 函数存在');
+    assert(html.includes('function updateSelectionUI('), 'updateSelectionUI 函数存在');
+    assert(html.includes('function clearSelection('), 'clearSelection 函数存在');
+    assert(html.includes('function showDeleteConfirmModal('), 'showDeleteConfirmModal 函数存在');
+    assert(html.includes('function hideDeleteConfirmModal('), 'hideDeleteConfirmModal 函数存在');
+    assert(html.includes('function confirmDelete('), 'confirmDelete 函数存在');
+    assert(html.includes('function handleBatchDownloadSelected('), 'handleBatchDownloadSelected 函数存在');
+    assert(html.includes('function handleBatchExportSelected('), 'handleBatchExportSelected 函数存在');
+
+    // Check CSS classes
+    assert(html.includes('.file-checkbox'), 'checkbox样式存在');
+    assert(html.includes('.file-row.selected'), '选中行样式存在');
+    assert(html.includes('.selection-info'), '选择信息样式存在');
+    assert(html.includes('.batch-operations'), '批量操作样式存在');
+    assert(html.includes('.delete-modal'), '删除弹窗样式存在');
+
+    log('  ✓ 所有批量操作UI元素验证通过');
+  } catch (error) {
+    assert(false, `批量操作UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -454,6 +578,8 @@ async function runTests() {
   await testPreviewAPI();
   await testScrapeAPI();
   await testSearchFilterUI();
+  await testDeleteAPI();
+  await testBatchOperationsUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);

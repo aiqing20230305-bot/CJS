@@ -378,6 +378,83 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API: Delete files
+  if (url.pathname === '/api/files' && req.method === 'DELETE') {
+    let body = '';
+
+    req.on('data', chunk => {
+      body += chunk.toString();
+    });
+
+    req.on('end', async () => {
+      try {
+        const { files } = JSON.parse(body);
+
+        if (!Array.isArray(files) || files.length === 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, message: '请提供要删除的文件列表' }));
+          return;
+        }
+
+        console.log('Delete request:', { fileCount: files.length, files });
+
+        const dataDir = path.join(__dirname, 'data');
+        let deleted = 0;
+        let failed = 0;
+        const errors = [];
+
+        for (const filename of files) {
+          // Security check: prevent path traversal
+          if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+            console.warn('Security warning: invalid filename:', filename);
+            failed++;
+            errors.push(`无效的文件名: ${filename}`);
+            continue;
+          }
+
+          // Check file extension
+          if (!filename.endsWith('.json')) {
+            failed++;
+            errors.push(`只能删除JSON文件: ${filename}`);
+            continue;
+          }
+
+          const filepath = path.join(dataDir, filename);
+
+          try {
+            await fs.unlink(filepath);
+            deleted++;
+            console.log('Deleted file:', filename);
+          } catch (error) {
+            if (error.code === 'ENOENT') {
+              // File doesn't exist, count as success (already deleted)
+              console.log('File not found (already deleted):', filename);
+              deleted++;
+            } else {
+              failed++;
+              errors.push(`${filename}: ${error.message}`);
+              console.error('Failed to delete file:', filename, error);
+            }
+          }
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          deleted,
+          failed,
+          errors: errors.length > 0 ? errors : undefined
+        }));
+      } catch (error) {
+        console.error('Delete API error:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, message: error.message }));
+      }
+    });
+
+    return;
+  }
+
   // API: Preview file (return JSON content)
   if (url.pathname.startsWith('/api/preview/') && req.method === 'GET') {
     try {

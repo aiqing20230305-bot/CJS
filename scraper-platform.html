@@ -827,6 +827,246 @@
       padding: 2px 4px;
       border-radius: 2px;
     }
+
+    /* File Selection */
+    .file-checkbox {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .file-row.selected {
+      background: #e3f2fd !important;
+    }
+
+    .selection-info {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: none;
+    }
+
+    .selection-info.active {
+      display: inline-flex;
+    }
+
+    .selection-count {
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    /* Batch Operations */
+    .batch-operations {
+      display: none;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .batch-operations.active {
+      display: flex;
+    }
+
+    .btn-batch-delete {
+      padding: 8px 16px;
+      font-size: 14px;
+      background: #ff6b6b;
+      border: 1px solid #ff6b6b;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-batch-delete:hover {
+      background: #ff5252;
+      border-color: #ff5252;
+    }
+
+    .btn-batch-delete:disabled {
+      background: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .btn-batch-action {
+      padding: 8px 16px;
+      font-size: 14px;
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-batch-action:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    .btn-clear-selection {
+      padding: 8px 16px;
+      font-size: 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-clear-selection:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Delete Confirmation Modal */
+    .delete-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .delete-modal.active {
+      display: flex;
+    }
+
+    .delete-modal-content {
+      background: var(--bg);
+      border-radius: 8px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .delete-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .delete-modal-header h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      color: #ff6b6b;
+    }
+
+    .delete-modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .delete-file-list {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+
+    .delete-file-item {
+      padding: 6px 0;
+      font-size: 13px;
+      color: var(--text);
+      word-break: break-all;
+    }
+
+    .delete-verification {
+      margin-bottom: 16px;
+    }
+
+    .delete-verification label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .delete-verification input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .delete-verification input:focus {
+      outline: none;
+      border-color: #ff6b6b;
+      box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+    }
+
+    .delete-warning {
+      padding: 12px;
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #856404;
+      margin-bottom: 16px;
+    }
+
+    .delete-modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .delete-modal-footer button {
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-cancel {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-cancel:hover {
+      border-color: var(--accent);
+    }
+
+    .btn-confirm-delete {
+      background: #ff6b6b;
+      border: 1px solid #ff6b6b;
+      color: white;
+    }
+
+    .btn-confirm-delete:hover {
+      background: #ff5252;
+    }
+
+    .btn-confirm-delete:disabled {
+      background: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -969,9 +1209,30 @@
 
     <!-- Data Packages Section -->
     <div class="section">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-        <h2 class="section-title" style="margin-bottom: 0;">4. 数据包下载</h2>
-        <div style="display: flex; gap: 12px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <h2 class="section-title" style="margin-bottom: 0;">4. 数据包下载</h2>
+          <div class="selection-info" id="selectionInfo">
+            已选择 <span class="selection-count" id="selectionCount">0</span> 个文件
+          </div>
+        </div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <!-- Batch Operations (shown when files are selected) -->
+          <div class="batch-operations" id="batchOperations">
+            <button class="btn-batch-delete" onclick="showDeleteConfirmModal()">
+              🗑️ 删除选中
+            </button>
+            <button class="btn-batch-action" onclick="handleBatchDownloadSelected()">
+              📦 下载选中
+            </button>
+            <button class="btn-batch-action" onclick="handleBatchExportSelected()">
+              📊 导出选中
+            </button>
+            <button class="btn-clear-selection" onclick="clearSelection()">
+              ✕ 取消选择
+            </button>
+          </div>
+          <!-- Original Batch Buttons -->
           <button id="exportAllBtn" class="btn btn-secondary" onclick="exportAllToExcel()" style="display: none; padding: 8px 16px; font-size: 14px; background: #0f7b6c; border-color: #0f7b6c; color: white;">
             📊 批量导出Excel
           </button>
@@ -1103,12 +1364,50 @@
     </div>
   </div>
 
+  <!-- Delete Confirmation Modal -->
+  <div class="delete-modal" id="deleteModal">
+    <div class="delete-modal-content">
+      <div class="delete-modal-header">
+        <h3>⚠️ 确认删除</h3>
+      </div>
+      <div class="delete-modal-body">
+        <div class="delete-warning">
+          <strong>警告：</strong>此操作不可恢复，文件将被永久删除！
+        </div>
+        <p style="margin-bottom: 12px; font-size: 14px; color: var(--text-secondary);">
+          将要删除以下 <strong id="deleteCount">0</strong> 个文件：
+        </p>
+        <div class="delete-file-list" id="deleteFileList">
+          <!-- File list will be populated by JavaScript -->
+        </div>
+        <div class="delete-verification">
+          <label>请输入 <strong>"确认删除"</strong> 以继续：</label>
+          <input
+            type="text"
+            id="deleteVerificationInput"
+            placeholder="输入：确认删除"
+            oninput="updateDeleteButton()"
+          >
+        </div>
+      </div>
+      <div class="delete-modal-footer">
+        <button class="btn-cancel" onclick="hideDeleteConfirmModal()">取消</button>
+        <button class="btn-confirm-delete" id="confirmDeleteBtn" onclick="confirmDelete()" disabled>
+          确认删除
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Global variables for search & filter
     let allFiles = [];
     let searchDebounceTimer = null;
     let currentSortField = 'time';
     let currentSortOrder = 'desc';
+
+    // Global variables for file selection
+    let selectedFiles = [];
 
     // Search handler with debounce
     function handleSearch() {
@@ -1262,6 +1561,9 @@
       table.innerHTML = `
         <thead>
           <tr>
+            <th style="width: 40px;">
+              <input type="checkbox" class="file-checkbox" id="selectAllCheckbox" onchange="handleSelectAll(this)">
+            </th>
             <th>文件名</th>
             <th>生成时间</th>
             <th>文件大小</th>
@@ -1275,7 +1577,14 @@
       files.forEach(file => {
         const row = document.createElement('tr');
         row.className = 'file-row';
+        row.dataset.filename = file.filename;
         const time = new Date(file.time).toLocaleString('zh-CN');
+
+        // Check if this file is selected
+        const isSelected = selectedFiles.includes(file.filename);
+        if (isSelected) {
+          row.classList.add('selected');
+        }
 
         // Highlight search term in filename
         let displayFilename = file.filename;
@@ -1285,6 +1594,9 @@
         }
 
         row.innerHTML = `
+          <td>
+            <input type="checkbox" class="file-checkbox" ${isSelected ? 'checked' : ''} onchange="handleSelectFile('${file.filename}', this)">
+          </td>
           <td>${displayFilename}</td>
           <td>${time}</td>
           <td>${file.size}</td>
@@ -1298,6 +1610,180 @@
       });
 
       area.appendChild(table);
+      updateSelectAllCheckbox();
+    }
+
+    // File selection functions
+    function handleSelectAll(checkbox) {
+      const isChecked = checkbox.checked;
+
+      if (isChecked) {
+        // Select all visible files
+        selectedFiles = allFiles.map(f => f.filename);
+      } else {
+        // Deselect all
+        selectedFiles = [];
+      }
+
+      updateSelectionUI();
+      applyFilters(); // Re-render to update checkboxes
+    }
+
+    function handleSelectFile(filename, checkbox) {
+      if (checkbox.checked) {
+        if (!selectedFiles.includes(filename)) {
+          selectedFiles.push(filename);
+        }
+      } else {
+        selectedFiles = selectedFiles.filter(f => f !== filename);
+      }
+
+      updateSelectionUI();
+
+      // Update row highlight
+      const row = checkbox.closest('tr');
+      if (checkbox.checked) {
+        row.classList.add('selected');
+      } else {
+        row.classList.remove('selected');
+      }
+
+      updateSelectAllCheckbox();
+    }
+
+    function updateSelectAllCheckbox() {
+      const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+      if (!selectAllCheckbox) return;
+
+      const allVisibleFiles = allFiles.map(f => f.filename);
+      const allSelected = allVisibleFiles.length > 0 &&
+                          allVisibleFiles.every(f => selectedFiles.includes(f));
+
+      selectAllCheckbox.checked = allSelected;
+      selectAllCheckbox.indeterminate = selectedFiles.length > 0 && !allSelected;
+    }
+
+    function updateSelectionUI() {
+      const selectionInfo = document.getElementById('selectionInfo');
+      const selectionCount = document.getElementById('selectionCount');
+      const batchOperations = document.getElementById('batchOperations');
+
+      selectionCount.textContent = selectedFiles.length;
+
+      if (selectedFiles.length > 0) {
+        selectionInfo.classList.add('active');
+        batchOperations.classList.add('active');
+      } else {
+        selectionInfo.classList.remove('active');
+        batchOperations.classList.remove('active');
+      }
+    }
+
+    function clearSelection() {
+      selectedFiles = [];
+      updateSelectionUI();
+      applyFilters(); // Re-render to update checkboxes
+    }
+
+    // Delete confirmation modal functions
+    function showDeleteConfirmModal() {
+      if (selectedFiles.length === 0) {
+        alert('请先选择要删除的文件');
+        return;
+      }
+
+      const modal = document.getElementById('deleteModal');
+      const deleteCount = document.getElementById('deleteCount');
+      const deleteFileList = document.getElementById('deleteFileList');
+      const deleteVerificationInput = document.getElementById('deleteVerificationInput');
+
+      deleteCount.textContent = selectedFiles.length;
+
+      // Populate file list
+      deleteFileList.innerHTML = selectedFiles.map(filename =>
+        `<div class="delete-file-item">📄 ${filename}</div>`
+      ).join('');
+
+      // Reset verification input
+      deleteVerificationInput.value = '';
+      document.getElementById('confirmDeleteBtn').disabled = true;
+
+      modal.classList.add('active');
+    }
+
+    function hideDeleteConfirmModal() {
+      const modal = document.getElementById('deleteModal');
+      modal.classList.remove('active');
+    }
+
+    function updateDeleteButton() {
+      const input = document.getElementById('deleteVerificationInput');
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+
+      confirmBtn.disabled = input.value !== '确认删除';
+    }
+
+    async function confirmDelete() {
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '删除中...';
+
+      try {
+        const response = await fetch('/api/files', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: selectedFiles })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert(`成功删除 ${result.deleted} 个文件`);
+          hideDeleteConfirmModal();
+          clearSelection();
+          await loadDataPackages();
+        } else {
+          alert(`删除失败: ${result.message || '未知错误'}`);
+        }
+      } catch (error) {
+        alert(`删除失败: ${error.message}`);
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '确认删除';
+      }
+    }
+
+    // Batch operations functions
+    function handleBatchDownloadSelected() {
+      if (selectedFiles.length === 0) {
+        alert('请先选择要下载的文件');
+        return;
+      }
+
+      // Download selected files one by one
+      selectedFiles.forEach((filename, index) => {
+        setTimeout(() => {
+          downloadFile(filename);
+        }, index * 200); // 200ms delay between downloads
+      });
+
+      alert(`开始下载 ${selectedFiles.length} 个文件...`);
+    }
+
+    function handleBatchExportSelected() {
+      if (selectedFiles.length === 0) {
+        alert('请先选择要导出的文件');
+        return;
+      }
+
+      // Export selected files one by one
+      selectedFiles.forEach((filename, index) => {
+        setTimeout(() => {
+          exportToExcel(filename);
+        }, index * 200); // 200ms delay between exports
+      });
+
+      alert(`开始导出 ${selectedFiles.length} 个文件...`);
     }
 
     // Add competitor input
