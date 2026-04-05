@@ -998,6 +998,33 @@ async function testTimeComparisonUI() {
   }
 }
 
+// Test 26: 对比差异显示UI测试
+async function testComparisonDiffUI() {
+  log('\n测试 26: 对比差异显示 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check JavaScript functions
+    assert(html.includes('function calculateComparisonDiff('), 'calculateComparisonDiff 函数存在');
+    assert(html.includes('function drawComparisonDiffLabel('), 'drawComparisonDiffLabel 函数存在');
+
+    // Check calculation logic
+    assert(html.includes('currentTotalCount - comparisonTotalCount'), '差异计算逻辑存在');
+    assert(html.includes('countDiff'), 'countDiff 变量存在');
+    assert(html.includes('sizeDiff'), 'sizeDiff 变量存在');
+
+    // Check label drawing in chart functions
+    assert(html.includes('drawComparisonDiffLabel(canvas, data, comparisonData'), 'drawComparisonDiffLabel在图表函数中被调用');
+
+    log('  ✓ 所有对比差异显示UI元素验证通过');
+  } catch (error) {
+    assert(false, `对比差异显示UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -1029,6 +1056,7 @@ async function runTests() {
   await testDataLabelsUI();
   await testTrendInsightsUI();
   await testTimeComparisonUI();
+  await testComparisonDiffUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);

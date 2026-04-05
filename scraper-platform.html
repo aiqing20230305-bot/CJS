@@ -2747,6 +2747,11 @@
 
       // Draw data point labels (max/min markers)
       drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
+
+      // Draw comparison difference label
+      if (comparisonData) {
+        drawComparisonDiffLabel(canvas, data, comparisonData, padding, chartWidth);
+      }
     }
 
     function drawBarChart(canvas, data, comparisonData = null) {
@@ -3153,6 +3158,11 @@
 
       // Draw data point labels (max/min markers)
       drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
+
+      // Draw comparison difference label
+      if (comparisonData) {
+        drawComparisonDiffLabel(canvas, data, comparisonData, padding, chartWidth);
+      }
     }
 
     function formatChartDate(dateStr) {
@@ -3521,6 +3531,80 @@
 
       // Aggregate by day
       return aggregateByDay(previousFiles);
+    }
+
+    // Calculate comparison difference
+    function calculateComparisonDiff(currentData, comparisonData) {
+      if (!currentData || !comparisonData || currentData.length === 0 || comparisonData.length === 0) {
+        return { countDiff: null, sizeDiff: null };
+      }
+
+      // Calculate total count
+      const currentTotalCount = currentData.reduce((sum, d) => sum + d.count, 0);
+      const comparisonTotalCount = comparisonData.reduce((sum, d) => sum + d.count, 0);
+
+      // Calculate total size
+      const currentTotalSize = currentData.reduce((sum, d) => sum + d.totalSize, 0);
+      const comparisonTotalSize = comparisonData.reduce((sum, d) => sum + d.totalSize, 0);
+
+      // Calculate percentage difference
+      const countDiff = comparisonTotalCount > 0
+        ? ((currentTotalCount - comparisonTotalCount) / comparisonTotalCount * 100).toFixed(1)
+        : 0;
+
+      const sizeDiff = comparisonTotalSize > 0
+        ? ((currentTotalSize - comparisonTotalSize) / comparisonTotalSize * 100).toFixed(1)
+        : 0;
+
+      return {
+        countDiff: parseFloat(countDiff),
+        sizeDiff: parseFloat(sizeDiff),
+        countAbsolute: currentTotalCount - comparisonTotalCount,
+        sizeAbsolute: currentTotalSize - comparisonTotalSize
+      };
+    }
+
+    // Draw comparison difference labels
+    function drawComparisonDiffLabel(canvas, currentData, comparisonData, padding, chartWidth) {
+      if (!showComparison || !currentData || !comparisonData) return;
+
+      const ctx = canvas.getContext('2d');
+      const diff = calculateComparisonDiff(currentData, comparisonData);
+
+      if (!diff.countDiff && !diff.sizeDiff) return;
+
+      let labelX = padding.left + chartWidth - 10;
+      const labelY = padding.top - 10;
+
+      // Draw size diff label (if enabled)
+      if (showSizeMetric && diff.sizeDiff !== null) {
+        const arrow = diff.sizeDiff > 0 ? '↑' : diff.sizeDiff < 0 ? '↓' : '→';
+        const color = diff.sizeDiff > 0 ? '#10b981' : diff.sizeDiff < 0 ? '#ef4444' : '#9b9a97';
+        const sign = diff.sizeDiff > 0 ? '+' : '';
+        const text = `${arrow} ${sign}${diff.sizeDiff}%`;
+
+        ctx.font = 'bold 13px Arial';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'right';
+        ctx.fillText(text, labelX, labelY);
+
+        // Move left for next label
+        const textWidth = ctx.measureText(text).width;
+        labelX -= textWidth + 20;
+      }
+
+      // Draw count diff label (if enabled)
+      if (showCountMetric && diff.countDiff !== null) {
+        const arrow = diff.countDiff > 0 ? '↑' : diff.countDiff < 0 ? '↓' : '→';
+        const color = diff.countDiff > 0 ? '#2383e2' : diff.countDiff < 0 ? '#ef4444' : '#9b9a97';
+        const sign = diff.countDiff > 0 ? '+' : '';
+        const text = `${arrow} ${sign}${diff.countDiff}%`;
+
+        ctx.font = 'bold 13px Arial';
+        ctx.fillStyle = color;
+        ctx.textAlign = 'right';
+        ctx.fillText(text, labelX, labelY);
+      }
     }
 
     // Toggle comparison mode
