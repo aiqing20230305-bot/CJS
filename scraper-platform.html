@@ -844,6 +844,32 @@
       border-color: var(--accent);
     }
 
+    .data-labels-toggle {
+      display: flex;
+      align-items: center;
+      margin-left: 16px;
+    }
+
+    .data-labels-toggle label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .data-labels-toggle input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    .data-labels-toggle span {
+      font-weight: 500;
+    }
+
     #canvasTooltip {
       position: absolute;
       background: rgba(0, 0, 0, 0.85);
@@ -1717,6 +1743,13 @@
                 <button class="chart-type-btn" data-type="bar" onclick="switchChartType('bar')" title="柱状图">📊 柱状图</button>
                 <button class="chart-type-btn" data-type="area" onclick="switchChartType('area')" title="面积图">📉 面积图</button>
               </div>
+              <!-- Data Labels Toggle -->
+              <div class="data-labels-toggle">
+                <label>
+                  <input type="checkbox" id="showDataLabelsCheckbox" checked onchange="toggleDataLabels()" />
+                  <span>显示数据点标注</span>
+                </label>
+              </div>
             </div>
           </div>
           <canvas id="trendChart"></canvas>
@@ -2339,6 +2372,7 @@
     // Canvas Trend Chart Functions
     let currentTimeRange = 7; // Default 7 days
     let currentChartType = 'line'; // Default chart type: 'line', 'bar', 'area'
+    let showDataLabels = true; // Show data point labels (max/min)
     let trendChartData = [];
     let showCountMetric = true;
     let showSizeMetric = true;
@@ -2528,6 +2562,9 @@
           ctx.fill();
         });
       }
+
+      // Draw data point labels (max/min markers)
+      drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
     }
 
     function drawBarChart(canvas, data) {
@@ -2646,6 +2683,9 @@
           ctx.fillRect(x, y, barWidth, barHeight);
         });
       }
+
+      // Draw data point labels (max/min markers)
+      drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
     }
 
     function drawAreaChart(canvas, data) {
@@ -2825,6 +2865,9 @@
           ctx.fill();
         });
       }
+
+      // Draw data point labels (max/min markers)
+      drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax);
     }
 
     function formatChartDate(dateStr) {
@@ -2859,6 +2902,131 @@
       });
 
       // Redraw chart
+      updateTrendChart();
+    }
+
+    // Find data extremes (max/min values)
+    function findDataExtremes(data) {
+      if (!data || data.length === 0) {
+        return { maxCount: null, minCount: null, maxSize: null, minSize: null };
+      }
+
+      let maxCount = { value: -Infinity, date: '', index: -1 };
+      let minCount = { value: Infinity, date: '', index: -1 };
+      let maxSize = { value: -Infinity, date: '', index: -1 };
+      let minSize = { value: Infinity, date: '', index: -1 };
+
+      data.forEach((d, i) => {
+        if (showCountMetric) {
+          if (d.count > maxCount.value) {
+            maxCount = { value: d.count, date: d.date, index: i };
+          }
+          if (d.count < minCount.value) {
+            minCount = { value: d.count, date: d.date, index: i };
+          }
+        }
+        if (showSizeMetric) {
+          if (d.totalSize > maxSize.value) {
+            maxSize = { value: d.totalSize, date: d.date, index: i };
+          }
+          if (d.totalSize < minSize.value) {
+            minSize = { value: d.totalSize, date: d.date, index: i };
+          }
+        }
+      });
+
+      return { maxCount, minCount, maxSize, minSize };
+    }
+
+    // Draw data point labels (max/min markers)
+    function drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax) {
+      if (!showDataLabels || !data || data.length === 0) return;
+
+      const ctx = canvas.getContext('2d');
+      const extremes = findDataExtremes(data);
+
+      // Draw max/min count labels
+      if (showCountMetric) {
+        // Max count (red star ⭐)
+        if (extremes.maxCount.index >= 0) {
+          const d = data[extremes.maxCount.index];
+          const x = padding.left + (chartWidth / (data.length - 1)) * extremes.maxCount.index;
+          const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+
+          // Draw star marker
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('⭐', x, y - 15);
+
+          // Draw value label
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 12px Arial';
+          ctx.fillText(d.count.toString(), x, y - 30);
+        }
+
+        // Min count (blue down arrow ▼)
+        if (extremes.minCount.index >= 0) {
+          const d = data[extremes.minCount.index];
+          const x = padding.left + (chartWidth / (data.length - 1)) * extremes.minCount.index;
+          const y = padding.top + chartHeight - (d.count / countAxisMax) * chartHeight;
+
+          // Draw down arrow marker
+          ctx.fillStyle = '#3b82f6';
+          ctx.font = 'bold 16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('▼', x, y + 25);
+
+          // Draw value label
+          ctx.fillStyle = '#3b82f6';
+          ctx.font = 'bold 12px Arial';
+          ctx.fillText(d.count.toString(), x, y + 40);
+        }
+      }
+
+      // Draw max/min size labels
+      if (showSizeMetric) {
+        // Max size (red star ⭐)
+        if (extremes.maxSize.index >= 0) {
+          const d = data[extremes.maxSize.index];
+          const x = padding.left + (chartWidth / (data.length - 1)) * extremes.maxSize.index;
+          const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+
+          // Draw star marker
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 20px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('⭐', x, y - 15);
+
+          // Draw value label
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 12px Arial';
+          ctx.fillText(formatBytes(d.totalSize), x, y - 30);
+        }
+
+        // Min size (green up arrow ▲)
+        if (extremes.minSize.index >= 0) {
+          const d = data[extremes.minSize.index];
+          const x = padding.left + (chartWidth / (data.length - 1)) * extremes.minSize.index;
+          const y = padding.top + chartHeight - (d.totalSize / sizeAxisMax) * chartHeight;
+
+          // Draw up arrow marker
+          ctx.fillStyle = '#10b981';
+          ctx.font = 'bold 16px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('▲', x, y + 25);
+
+          // Draw value label
+          ctx.fillStyle = '#10b981';
+          ctx.font = 'bold 12px Arial';
+          ctx.fillText(formatBytes(d.totalSize), x, y + 40);
+        }
+      }
+    }
+
+    // Toggle data labels visibility
+    function toggleDataLabels() {
+      showDataLabels = document.getElementById('showDataLabelsCheckbox').checked;
       updateTrendChart();
     }
 

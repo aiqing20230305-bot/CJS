@@ -899,6 +899,40 @@ async function testChartTypeUI() {
   }
 }
 
+// Test 23: 数据点标注UI测试
+async function testDataLabelsUI() {
+  log('\n测试 23: 数据点标注 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check JavaScript functions
+    assert(html.includes('function findDataExtremes('), 'findDataExtremes 函数存在');
+    assert(html.includes('function drawDataLabels('), 'drawDataLabels 函数存在');
+    assert(html.includes('function toggleDataLabels('), 'toggleDataLabels 函数存在');
+
+    // Check state variable
+    assert(html.includes('showDataLabels'), 'showDataLabels 状态变量存在');
+
+    // Check UI elements
+    assert(html.includes('class="data-labels-toggle"'), '数据点标注切换器存在');
+    assert(html.includes('id="showDataLabelsCheckbox"'), '数据点标注checkbox存在');
+    assert(html.includes('checked'), 'checkbox默认选中状态');
+
+    // Check drawDataLabels is called in chart functions
+    assert(html.includes('drawDataLabels(canvas, data, padding, chartWidth, chartHeight, countAxisMax, sizeAxisMax)'), 'drawDataLabels在图表函数中被调用');
+
+    // Check CSS styles
+    assert(html.includes('.data-labels-toggle'), '数据点标注切换器样式存在');
+
+    log('  ✓ 所有数据点标注UI元素验证通过');
+  } catch (error) {
+    assert(false, `数据点标注UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -927,6 +961,7 @@ async function runTests() {
   await testChartExportUI();
   await testExtendedTimeRangeUI();
   await testChartTypeUI();
+  await testDataLabelsUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
