@@ -3,3 +3,5 @@ data/
 *.log
 .env
 .DS_Store
+.gemini/
+test_api.sh
