@@ -293,6 +293,35 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // API: Preview file (return JSON content)
+  if (url.pathname.startsWith('/api/preview/') && req.method === 'GET') {
+    try {
+      const filename = decodeURIComponent(url.pathname.replace('/api/preview/', ''));
+      const filepath = path.join(__dirname, 'data', filename);
+
+      console.log('Preview request:', { filename, filepath });
+
+      const content = await fs.readFile(filepath, 'utf-8');
+
+      // Validate JSON
+      try {
+        JSON.parse(content);
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON file' }));
+        return;
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(content);
+    } catch (error) {
+      console.error('Preview error:', error);
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'File not found' }));
+    }
+    return;
+  }
+
   // API: Download file
   if (url.pathname.startsWith('/api/download/') && req.method === 'GET') {
     try {

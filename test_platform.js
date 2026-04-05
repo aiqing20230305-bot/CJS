@@ -224,7 +224,41 @@ async function testSSEConnection() {
   }
 }
 
-// Test 6: 抓取API测试（不实际执行）
+// Test 6: 预览API测试
+async function testPreviewAPI() {
+  log('\n测试 6: 预览 API', colors.blue);
+  try {
+    // First get file list
+    const listRes = await makeRequest('/api/files');
+    const files = JSON.parse(listRes.body);
+
+    if (files.length === 0) {
+      log('  ⚠️  跳过：没有可预览的文件', colors.yellow);
+      return;
+    }
+
+    const testFile = files[0].filename;
+    log(`  预览文件: ${testFile}`);
+
+    const previewRes = await makeRequest(`/api/preview/${encodeURIComponent(testFile)}`);
+    assert(previewRes.statusCode === 200, '预览返回 200 状态码');
+    assert(previewRes.headers['content-type'].includes('application/json'), '返回 JSON 格式');
+    assert(previewRes.body.length > 0, '预览内容不为空');
+
+    // Verify it's valid JSON
+    try {
+      const jsonData = JSON.parse(previewRes.body);
+      assert(true, '返回的是有效的 JSON');
+      assert(typeof jsonData === 'object', 'JSON 是对象类型');
+    } catch {
+      assert(false, '返回的不是有效的 JSON');
+    }
+  } catch (error) {
+    assert(false, `预览 API 测试失败: ${error.message}`);
+  }
+}
+
+// Test 7: 抓取API测试（不实际执行）
 async function testScrapeAPI() {
   log('\n测试 6: 抓取 API 接口验证', colors.blue);
   try {
@@ -268,6 +302,7 @@ async function runTests() {
   await testSingleDownload();
   await testBatchDownload();
   await testSSEConnection();
+  await testPreviewAPI();
   await testScrapeAPI();
 
   // Summary

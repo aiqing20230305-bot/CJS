@@ -415,6 +415,170 @@
       color: var(--text-secondary);
     }
 
+    /* Preview Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      animation: fadeIn 0.2s;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: var(--bg);
+      border-radius: 8px;
+      width: 90%;
+      max-width: 900px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      animation: slideUp 0.3s;
+      transition: all 0.3s;
+    }
+
+    .modal-content.fullscreen {
+      width: 100%;
+      height: 100vh;
+      max-width: 100%;
+      max-height: 100vh;
+      border-radius: 0;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .modal-header .btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .json-viewer {
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .json-key {
+      color: #881391;
+      font-weight: 500;
+    }
+
+    .json-string {
+      color: #c41a16;
+    }
+
+    .json-number {
+      color: #1c00cf;
+    }
+
+    .json-boolean {
+      color: #0f68a0;
+      font-weight: 500;
+    }
+
+    .json-null {
+      color: #808080;
+      font-style: italic;
+    }
+
+    .btn-icon {
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-icon:hover {
+      background: var(--hover);
+      border-color: var(--accent);
+    }
+
+    .btn-close {
+      padding: 4px 8px;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+
+    .btn-close:hover {
+      color: var(--text);
+    }
+
+    .btn-preview {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--bg);
+      color: var(--accent);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-right: 8px;
+    }
+
+    .btn-preview:hover {
+      background: var(--hover);
+      border-color: var(--accent);
+    }
+
     /* Responsive */
     @media (max-width: 767px) {
       .container {
@@ -900,7 +1064,10 @@
             <td>${file.filename}</td>
             <td>${time}</td>
             <td>${file.size}</td>
-            <td><button class="btn-download" onclick="downloadFile('${file.filename}')">下载</button></td>
+            <td>
+              <button class="btn-preview" onclick="openPreview('${file.filename}')">👁️ 预览</button>
+              <button class="btn-download" onclick="downloadFile('${file.filename}')">下载</button>
+            </td>
           `;
           tbody.appendChild(row);
         });
@@ -953,6 +1120,154 @@
         downloadAllBtn.textContent = originalText;
       }
     }
+
+    // JSON Preview Functions
+    let currentJSON = '';
+
+    // Open preview modal
+    async function openPreview(filename) {
+      const modal = document.getElementById('previewModal');
+      const title = document.getElementById('previewTitle');
+      const viewer = document.getElementById('jsonViewer');
+
+      try {
+        // Fetch file content
+        const response = await fetch(`/api/preview/${encodeURIComponent(filename)}`);
+        if (!response.ok) {
+          throw new Error('Failed to load file');
+        }
+
+        const jsonData = await response.json();
+        currentJSON = JSON.stringify(jsonData, null, 2);
+
+        // Update modal
+        title.textContent = filename;
+        viewer.innerHTML = syntaxHighlight(currentJSON);
+
+        // Show modal
+        modal.classList.add('active');
+
+        // Add keyboard listener
+        document.addEventListener('keydown', handleKeyPress);
+      } catch (error) {
+        console.error('Preview error:', error);
+        alert('预览失败: ' + error.message);
+      }
+    }
+
+    // Close preview modal
+    function closePreview() {
+      const modal = document.getElementById('previewModal');
+      const modalContent = document.getElementById('previewModalContent');
+      const searchInput = document.getElementById('searchInput');
+
+      modal.classList.remove('active');
+      modalContent.classList.remove('fullscreen');
+      searchInput.value = '';
+      document.removeEventListener('keydown', handleKeyPress);
+    }
+
+    // Handle keyboard shortcuts
+    function handleKeyPress(e) {
+      if (e.key === 'Escape') {
+        closePreview();
+      }
+    }
+
+    // Copy JSON to clipboard
+    async function copyJSON() {
+      try {
+        await navigator.clipboard.writeText(currentJSON);
+
+        // Visual feedback
+        const btn = event.target.closest('.btn-icon');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✓ 已复制';
+        btn.style.background = 'var(--success)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--success)';
+
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.style.background = '';
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 2000);
+      } catch (error) {
+        console.error('Copy error:', error);
+        alert('复制失败: ' + error.message);
+      }
+    }
+
+    // Syntax highlighting for JSON
+    function syntaxHighlight(json) {
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-number';
+
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'json-key';
+          } else {
+            cls = 'json-string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+
+        return '<span class="' + cls + '">' + match + '</span>';
+      });
+    }
+
+    // Toggle fullscreen mode
+    function toggleFullscreen() {
+      const modalContent = document.getElementById('previewModalContent');
+      const icon = document.getElementById('fullscreenIcon');
+
+      if (modalContent.classList.contains('fullscreen')) {
+        modalContent.classList.remove('fullscreen');
+        icon.textContent = '⛶';
+      } else {
+        modalContent.classList.add('fullscreen');
+        icon.textContent = '⛶';
+      }
+    }
+
+    // Search in JSON
+    function searchJSON(query) {
+      const viewer = document.getElementById('jsonViewer');
+
+      if (!query || query.trim() === '') {
+        // Reset to original highlighted JSON
+        viewer.innerHTML = syntaxHighlight(currentJSON);
+        return;
+      }
+
+      // Highlight search results
+      let highlighted = syntaxHighlight(currentJSON);
+      const searchRegex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+
+      highlighted = highlighted.replace(searchRegex, '<mark style="background: #ffeb3b; color: #000; padding: 2px 4px; border-radius: 2px;">$1</mark>');
+
+      viewer.innerHTML = highlighted;
+
+      // Scroll to first match
+      const firstMatch = viewer.querySelector('mark');
+      if (firstMatch) {
+        firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+      const modal = document.getElementById('previewModal');
+      if (e.target === modal) {
+        closePreview();
+      }
+    });
 
     // Save to history (with localStorage persistence)
     function saveToHistory(config) {
@@ -1138,5 +1453,28 @@
       renderHistory();
     });
   </script>
+
+  <!-- Preview Modal -->
+  <div id="previewModal" class="modal">
+    <div id="previewModalContent" class="modal-content">
+      <div class="modal-header">
+        <h3 id="previewTitle">数据预览</h3>
+        <div class="btn-group">
+          <input type="text" id="searchInput" placeholder="搜索..." style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; width: 180px; margin-right: 8px;" onkeyup="searchJSON(this.value)">
+          <button class="btn-icon" onclick="toggleFullscreen()" title="全屏">
+            <span id="fullscreenIcon">⛶</span>
+          </button>
+          <button class="btn-icon" onclick="copyJSON()" title="复制JSON">
+            📋 复制
+          </button>
+          <button class="btn-close" onclick="closePreview()" title="关闭">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="jsonViewer" class="json-viewer"></div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
