@@ -611,6 +611,71 @@
       color: var(--text-secondary);
     }
 
+    /* Pie Chart */
+    #chartContainer {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+    }
+
+    .pie-slice {
+      transition: opacity 0.3s;
+      cursor: pointer;
+    }
+
+    .pie-slice:hover {
+      opacity: 0.8;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .legend-item:hover {
+      background: var(--hover);
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .legend-label {
+      flex: 1;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .legend-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    /* Tooltip */
+    .chart-tooltip {
+      position: fixed;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+      display: none;
+    }
+
     /* Responsive */
     @media (max-width: 767px) {
       .container {
@@ -780,7 +845,7 @@
 
       <!-- Statistics Cards -->
       <div id="statsCards" style="display: none; margin-bottom: 24px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
           <!-- Total Files -->
           <div class="stat-card">
             <div class="stat-icon">📦</div>
@@ -804,6 +869,17 @@
             <div class="stat-icon">📊</div>
             <div class="stat-value" id="statAvgSize">0 MB</div>
             <div class="stat-label">平均大小</div>
+          </div>
+        </div>
+
+        <!-- Data Type Distribution Chart -->
+        <div id="chartContainer" style="display: none;">
+          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: var(--text);">📊 数据类型分布</h3>
+          <div style="display: flex; align-items: center; gap: 32px; flex-wrap: wrap;">
+            <!-- Pie Chart -->
+            <div id="pieChart" style="flex-shrink: 0;"></div>
+            <!-- Legend -->
+            <div id="chartLegend" style="flex: 1; min-width: 200px;"></div>
           </div>
         </div>
       </div>
@@ -1080,6 +1156,141 @@
     }
 
     // Load real file list from backend
+    // Data type configuration
+    const DATA_TYPES = {
+      market: { label: '市场热点', color: '#2383e2' },
+      videos: { label: '爆款视频', color: '#ff6b6b' },
+      competitors: { label: '竞品分析', color: '#0f7b6c' },
+      report: { label: '品类报告', color: '#ff8c42' },
+      full: { label: '完整数据', color: '#9b59b6' },
+      test: { label: '测试数据', color: '#95a5a6' },
+      other: { label: '其他', color: '#f1c40f' }
+    };
+
+    // Render pie chart
+    function renderPieChart(typeDistribution, totalFiles) {
+      const chartContainer = document.getElementById('chartContainer');
+      const pieChart = document.getElementById('pieChart');
+      const chartLegend = document.getElementById('chartLegend');
+
+      // Check if there are multiple types
+      const typeCount = Object.keys(typeDistribution).length;
+      if (typeCount === 0) {
+        chartContainer.style.display = 'none';
+        return;
+      }
+
+      // Show chart
+      chartContainer.style.display = 'block';
+
+      // Calculate percentages
+      const data = Object.entries(typeDistribution).map(([type, count]) => ({
+        type,
+        count,
+        percentage: (count / totalFiles * 100).toFixed(1),
+        config: DATA_TYPES[type] || DATA_TYPES.other
+      }));
+
+      // Sort by count (descending)
+      data.sort((a, b) => b.count - a.count);
+
+      // Render SVG pie chart
+      const size = 160;
+      const radius = 70;
+      const center = size / 2;
+
+      let svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+
+      let currentAngle = -90; // Start from top
+      data.forEach(item => {
+        const angle = (item.count / totalFiles) * 360;
+        const endAngle = currentAngle + angle;
+
+        // Calculate arc path
+        const startX = center + radius * Math.cos(currentAngle * Math.PI / 180);
+        const startY = center + radius * Math.sin(currentAngle * Math.PI / 180);
+        const endX = center + radius * Math.cos(endAngle * Math.PI / 180);
+        const endY = center + radius * Math.sin(endAngle * Math.PI / 180);
+
+        const largeArcFlag = angle > 180 ? 1 : 0;
+
+        const path = `
+          M ${center} ${center}
+          L ${startX} ${startY}
+          A ${radius} ${radius} 0 ${largeArcFlag} 1 ${endX} ${endY}
+          Z
+        `;
+
+        svg += `<path d="${path}" fill="${item.config.color}" class="pie-slice" data-type="${item.type}" />`;
+        currentAngle = endAngle;
+      });
+
+      svg += '</svg>';
+      pieChart.innerHTML = svg;
+
+      // Render legend
+      let legendHTML = '';
+      data.forEach(item => {
+        legendHTML += `
+          <div class="legend-item" data-type="${item.type}">
+            <div class="legend-color" style="background: ${item.config.color};"></div>
+            <div class="legend-label">${item.config.label}</div>
+            <div class="legend-value">${item.count} (${item.percentage}%)</div>
+          </div>
+        `;
+      });
+      chartLegend.innerHTML = legendHTML;
+
+      // Add hover interactions
+      const slices = pieChart.querySelectorAll('.pie-slice');
+      const legendItems = chartLegend.querySelectorAll('.legend-item');
+      const tooltip = document.getElementById('chartTooltip');
+
+      slices.forEach((slice, index) => {
+        const item = data[index];
+
+        slice.addEventListener('mouseenter', (e) => {
+          legendItems[index].style.background = 'var(--hover)';
+
+          // Show tooltip
+          tooltip.innerHTML = `${item.config.label}: ${item.count} 个 (${item.percentage}%)`;
+          tooltip.style.display = 'block';
+        });
+
+        slice.addEventListener('mousemove', (e) => {
+          tooltip.style.left = (e.clientX + 10) + 'px';
+          tooltip.style.top = (e.clientY + 10) + 'px';
+        });
+
+        slice.addEventListener('mouseleave', () => {
+          legendItems[index].style.background = '';
+          tooltip.style.display = 'none';
+        });
+      });
+
+      legendItems.forEach((item, index) => {
+        const dataItem = data[index];
+
+        item.addEventListener('mouseenter', () => {
+          slices[index].style.opacity = '0.8';
+
+          // Show tooltip on legend
+          tooltip.innerHTML = `${dataItem.config.label}: ${dataItem.count} 个 (${dataItem.percentage}%)`;
+          tooltip.style.display = 'block';
+        });
+
+        item.addEventListener('mousemove', (e) => {
+          tooltip.style.left = (e.clientX + 10) + 'px';
+          tooltip.style.top = (e.clientY + 10) + 'px';
+        });
+
+        item.addEventListener('mouseleave', () => {
+          slices[index].style.opacity = '';
+          tooltip.style.display = 'none';
+        });
+      });
+    }
+
     // Load statistics
     async function loadStatistics() {
       try {
@@ -1126,6 +1337,11 @@
           document.getElementById('statLatest').textContent = timeStr;
         } else {
           document.getElementById('statLatest').textContent = '-';
+        }
+
+        // Render pie chart
+        if (stats.typeDistribution && Object.keys(stats.typeDistribution).length > 0) {
+          renderPieChart(stats.typeDistribution, stats.totalFiles);
         }
       } catch (error) {
         console.error('加载统计失败:', error);
@@ -1570,6 +1786,9 @@
       renderHistory();
     });
   </script>
+
+  <!-- Chart Tooltip -->
+  <div id="chartTooltip" class="chart-tooltip"></div>
 
   <!-- Preview Modal -->
   <div id="previewModal" class="modal">
