@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数据抓取配置平台</title>
+  <style>
+    /* CSS Variables */
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f7f7f5;
+      --text: #37352f;
+      --text-secondary: #787774;
+      --text-tertiary: #9b9a97;
+      --border: #e9e9e7;
+      --hover: #f7f7f5;
+      --accent: #2383e2;
+      --accent-hover: #1a6ec9;
+      --success: #0f7b6c;
+      --warning: #ff6b6b;
+    }
+
+    /* Reset & Base */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg-secondary);
+    }
+
+    /* Layout */
+    .header {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 24px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .header .subtitle {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px;
+    }
+
+    .section {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    /* Form Elements */
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .field input[type="text"],
+    .field input[type="number"],
+    .field select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 16px;
+      transition: border-color 0.15s;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(35, 131, 226, 0.1);
+    }
+
+    /* Grid Layout */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    @media (min-width: 768px) {
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    /* Competitor List */
+    .competitor-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .competitor-item {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .competitor-item input {
+      flex: 1;
+    }
+
+    .btn-remove {
+      padding: 8px 12px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--warning);
+      transition: background 0.15s;
+    }
+
+    .btn-remove:hover {
+      background: #ffe0e0;
+    }
+
+    .btn-add {
+      margin-top: 8px;
+      padding: 8px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--accent);
+      transition: all 0.15s;
+    }
+
+    .btn-add:hover {
+      background: var(--hover);
+      border-color: var(--accent);
+    }
+
+    /* Checkbox Group */
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .checkbox-item label {
+      margin: 0;
+      cursor: pointer;
+      font-weight: 400;
+    }
+
+    /* Radio Group */
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .radio-item:hover {
+      background: var(--hover);
+    }
+
+    .radio-item input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .radio-item label {
+      margin: 0;
+      cursor: pointer;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .radio-item.recommended::after {
+      content: "推荐";
+      background: var(--success);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* Buttons */
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      flex: 1;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-primary:disabled {
+      background: var(--border);
+      border-color: var(--border);
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: var(--hover);
+    }
+
+    /* Progress Section */
+    .progress-section {
+      display: none;
+    }
+
+    .progress-section.active {
+      display: block;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .status-badge.running {
+      background: #e3f2fd;
+      color: var(--accent);
+    }
+
+    .status-badge.completed {
+      background: #e0f2f1;
+      color: var(--success);
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.3s;
+    }
+
+    .log-output {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px;
+      font-family: "SF Mono", Monaco, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text-secondary);
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    /* Data Table */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+
+    .data-table thead {
+      background: var(--bg-secondary);
+    }
+
+    .data-table th {
+      padding: 12px;
+      text-align: left;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 12px;
+      font-size: 14px;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .data-table tbody tr:hover {
+      background: var(--hover);
+    }
+
+    .btn-download {
+      padding: 6px 12px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-download:hover {
+      background: var(--accent-hover);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--text-tertiary);
+    }
+
+    /* History Item */
+    .history-item {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .history-item:hover {
+      background: var(--hover);
+      border-color: var(--accent);
+    }
+
+    .history-item .title {
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .history-item .meta {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* Responsive */
+    @media (max-width: 767px) {
+      .container {
+        padding: 16px;
+      }
+
+      .section {
+        padding: 16px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <h1>数据抓取配置平台</h1>
+    <div class="subtitle">基于 Gemini CLI 的智能数据采集系统</div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Configuration Section -->
+    <div class="section">
+      <h2 class="section-title">1. 配置参数</h2>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="brand">品牌名称</label>
+          <input type="text" id="brand" placeholder="例：多芬">
+        </div>
+
+        <div class="field">
+          <label for="category">品类</label>
+          <input type="text" id="category" placeholder="例：洗护">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>竞品列表</label>
+        <div class="competitor-list" id="competitorList">
+          <div class="competitor-item">
+            <input type="text" placeholder="竞品 1" class="competitor-input">
+            <button class="btn-remove" onclick="removeCompetitor(this)">删除</button>
+          </div>
+          <div class="competitor-item">
+            <input type="text" placeholder="竞品 2" class="competitor-input">
+            <button class="btn-remove" onclick="removeCompetitor(this)">删除</button>
+          </div>
+        </div>
+        <button class="btn-add" onclick="addCompetitor()">+ 添加竞品</button>
+      </div>
+
+      <div class="field">
+        <label for="keywords">关键词</label>
+        <input type="text" id="keywords" placeholder="例：洗护套装 护发">
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="days">抓取天数</label>
+          <select id="days">
+            <option value="7" selected>7 天</option>
+            <option value="14">14 天</option>
+            <option value="30">30 天</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="maxResults">最大结果数</label>
+          <select id="maxResults">
+            <option value="5">5 条</option>
+            <option value="10" selected>10 条</option>
+            <option value="20">20 条</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>平台选择</label>
+        <div class="checkbox-group">
+          <div class="checkbox-item">
+            <input type="checkbox" id="platform-xhs" value="小红书" checked>
+            <label for="platform-xhs">小红书</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="platform-douyin" value="抖音" checked>
+            <label for="platform-douyin">抖音</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="platform-weibo" value="微博">
+            <label for="platform-weibo">微博</label>
+          </div>
+          <div class="checkbox-item">
+            <input type="checkbox" id="platform-all" value="全网">
+            <label for="platform-all">全网</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrape Type Section -->
+    <div class="section">
+      <h2 class="section-title">2. 抓取类型</h2>
+
+      <div class="radio-group">
+        <div class="radio-item">
+          <input type="radio" id="type-market" name="scrapeType" value="market">
+          <label for="type-market">市场热点</label>
+        </div>
+        <div class="radio-item">
+          <input type="radio" id="type-videos" name="scrapeType" value="videos">
+          <label for="type-videos">爆款视频</label>
+        </div>
+        <div class="radio-item">
+          <input type="radio" id="type-competitors" name="scrapeType" value="competitors">
+          <label for="type-competitors">竞品分析</label>
+        </div>
+        <div class="radio-item">
+          <input type="radio" id="type-report" name="scrapeType" value="report">
+          <label for="type-report">品类报告</label>
+        </div>
+        <div class="radio-item recommended">
+          <input type="radio" id="type-full" name="scrapeType" value="full" checked>
+          <label for="type-full">完整数据包</label>
+        </div>
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="startScraping()">开始抓取</button>
+        <button class="btn btn-secondary" onclick="clearConfig()">清空配置</button>
+      </div>
+    </div>
+
+    <!-- Progress Section -->
+    <div class="section progress-section" id="progressSection">
+      <h2 class="section-title">3. 抓取进度</h2>
+
+      <div>
+        <span class="status-badge running" id="statusBadge">进行中...</span>
+      </div>
+
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+
+      <div class="log-output" id="logOutput">
+        正在初始化...<br>
+      </div>
+    </div>
+
+    <!-- Data Packages Section -->
+    <div class="section">
+      <h2 class="section-title">4. 数据包下载</h2>
+
+      <div id="dataPackagesArea">
+        <div class="empty-state">
+          <p>暂无数据包</p>
+          <p style="font-size: 14px; margin-top: 8px;">开始抓取后，数据包将显示在这里</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Section -->
+    <div class="section">
+      <h2 class="section-title">5. 历史记录</h2>
+
+      <div id="historyArea">
+        <div class="empty-state">
+          <p>暂无历史记录</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Add competitor input
+    function addCompetitor() {
+      const list = document.getElementById('competitorList');
+      const item = document.createElement('div');
+      item.className = 'competitor-item';
+      item.innerHTML = `
+        <input type="text" placeholder="竞品 ${list.children.length + 1}" class="competitor-input">
+        <button class="btn-remove" onclick="removeCompetitor(this)">删除</button>
+      `;
+      list.appendChild(item);
+    }
+
+    // Remove competitor input
+    function removeCompetitor(button) {
+      const list = document.getElementById('competitorList');
+      if (list.children.length > 1) {
+        button.parentElement.remove();
+      } else {
+        alert('至少保留一个竞品输入框');
+      }
+    }
+
+    // Get current configuration
+    function getConfig() {
+      const competitors = Array.from(document.querySelectorAll('.competitor-input'))
+        .map(input => input.value.trim())
+        .filter(v => v);
+
+      const platforms = Array.from(document.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+
+      const scrapeType = document.querySelector('input[name="scrapeType"]:checked').value;
+
+      return {
+        brand: document.getElementById('brand').value.trim(),
+        category: document.getElementById('category').value.trim(),
+        competitors,
+        keywords: document.getElementById('keywords').value.trim(),
+        days: parseInt(document.getElementById('days').value),
+        maxResults: parseInt(document.getElementById('maxResults').value),
+        platforms,
+        scrapeType,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    // Validate configuration
+    function validateConfig(config) {
+      if (!config.brand) {
+        alert('请输入品牌名称');
+        return false;
+      }
+      if (!config.category) {
+        alert('请输入品类');
+        return false;
+      }
+      if (config.competitors.length === 0) {
+        alert('请至少输入一个竞品');
+        return false;
+      }
+      if (config.platforms.length === 0) {
+        alert('请至少选择一个平台');
+        return false;
+      }
+      return true;
+    }
+
+    // Start scraping
+    function startScraping() {
+      const config = getConfig();
+
+      if (!validateConfig(config)) {
+        return;
+      }
+
+      // Save to history
+      saveToHistory(config);
+
+      // Show progress section
+      const progressSection = document.getElementById('progressSection');
+      progressSection.classList.add('active');
+      progressSection.scrollIntoView({ behavior: 'smooth' });
+
+      // Reset progress
+      const statusBadge = document.getElementById('statusBadge');
+      const progressFill = document.getElementById('progressFill');
+      const logOutput = document.getElementById('logOutput');
+
+      statusBadge.textContent = '进行中...';
+      statusBadge.className = 'status-badge running';
+      progressFill.style.width = '0%';
+      logOutput.innerHTML = '正在初始化...<br>';
+
+      // Simulate scraping process
+      simulateScraping(config);
+    }
+
+    // Simulate scraping (replace with actual API call)
+    function simulateScraping(config) {
+      const logOutput = document.getElementById('logOutput');
+      const progressFill = document.getElementById('progressFill');
+      const statusBadge = document.getElementById('statusBadge');
+
+      const steps = [
+        { progress: 20, message: '✓ 加载配置完成' },
+        { progress: 40, message: '✓ 连接 Gemini API' },
+        { progress: 60, message: `✓ 正在抓取 ${config.scrapeType} 数据...` },
+        { progress: 80, message: '✓ 数据处理中...' },
+        { progress: 100, message: '✓ 抓取完成！' }
+      ];
+
+      let currentStep = 0;
+
+      const interval = setInterval(() => {
+        if (currentStep < steps.length) {
+          const step = steps[currentStep];
+          progressFill.style.width = step.progress + '%';
+          logOutput.innerHTML += step.message + '<br>';
+          logOutput.scrollTop = logOutput.scrollHeight;
+          currentStep++;
+        } else {
+          clearInterval(interval);
+          statusBadge.textContent = '已完成';
+          statusBadge.className = 'status-badge completed';
+
+          // Add data package
+          addDataPackage(config);
+        }
+      }, 1000);
+    }
+
+    // Add data package to list
+    function addDataPackage(config) {
+      const area = document.getElementById('dataPackagesArea');
+
+      // Remove empty state
+      area.innerHTML = '';
+
+      // Create table if not exists
+      let table = area.querySelector('.data-table');
+      if (!table) {
+        table = document.createElement('table');
+        table.className = 'data-table';
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>文件名</th>
+              <th>生成时间</th>
+              <th>文件大小</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+        area.appendChild(table);
+      }
+
+      // Add row
+      const tbody = table.querySelector('tbody');
+      const row = document.createElement('tr');
+      const filename = `${config.scrapeType}_${config.brand}_${Date.now()}.json`;
+      const time = new Date().toLocaleString('zh-CN');
+      const size = (Math.random() * 5 + 1).toFixed(2) + ' MB';
+
+      row.innerHTML = `
+        <td>${filename}</td>
+        <td>${time}</td>
+        <td>${size}</td>
+        <td><button class="btn-download" onclick="downloadFile('${filename}')">下载</button></td>
+      `;
+      tbody.insertBefore(row, tbody.firstChild);
+    }
+
+    // Download file
+    function downloadFile(filename) {
+      alert(`下载文件: ${filename}\n\n实际使用时，这里会触发文件下载。\n文件位置: ./data/`);
+    }
+
+    // Save to history
+    function saveToHistory(config) {
+      const historyArea = document.getElementById('historyArea');
+
+      // Remove empty state
+      if (historyArea.querySelector('.empty-state')) {
+        historyArea.innerHTML = '';
+      }
+
+      // Add history item
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <div class="title">${config.brand} - ${config.category} (${config.scrapeType})</div>
+        <div class="meta">
+          竞品: ${config.competitors.join(', ')} |
+          平台: ${config.platforms.join(', ')} |
+          ${new Date().toLocaleString('zh-CN')}
+        </div>
+      `;
+      item.onclick = () => loadHistory(config);
+      historyArea.insertBefore(item, historyArea.firstChild);
+
+      // Keep only 5 items
+      const items = historyArea.querySelectorAll('.history-item');
+      if (items.length > 5) {
+        items[5].remove();
+      }
+    }
+
+    // Load history
+    function loadHistory(config) {
+      if (confirm('加载此配置？')) {
+        document.getElementById('brand').value = config.brand;
+        document.getElementById('category').value = config.category;
+        document.getElementById('keywords').value = config.keywords || '';
+        document.getElementById('days').value = config.days;
+        document.getElementById('maxResults').value = config.maxResults;
+
+        // Load competitors
+        const list = document.getElementById('competitorList');
+        list.innerHTML = '';
+        config.competitors.forEach((comp, i) => {
+          const item = document.createElement('div');
+          item.className = 'competitor-item';
+          item.innerHTML = `
+            <input type="text" placeholder="竞品 ${i + 1}" class="competitor-input" value="${comp}">
+            <button class="btn-remove" onclick="removeCompetitor(this)">删除</button>
+          `;
+          list.appendChild(item);
+        });
+
+        // Load platforms
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.checked = config.platforms.includes(cb.value);
+        });
+
+        // Load scrape type
+        document.getElementById('type-' + config.scrapeType).checked = true;
+
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    // Clear configuration
+    function clearConfig() {
+      if (confirm('确定清空所有配置？')) {
+        document.getElementById('brand').value = '';
+        document.getElementById('category').value = '';
+        document.getElementById('keywords').value = '';
+        document.getElementById('days').value = '7';
+        document.getElementById('maxResults').value = '10';
+
+        // Reset competitors
+        const list = document.getElementById('competitorList');
+        list.innerHTML = `
+          <div class="competitor-item">
+            <input type="text" placeholder="竞品 1" class="competitor-input">
+            <button class="btn-remove" onclick="removeCompetitor(this)">删除</button>
+          </div>
+          <div class="competitor-item">
+            <input type="text" placeholder="竞品 2" class="competitor-input">
+            <button class="btn-remove" onclick="removeCompetitor(this)">删除</button>
+          </div>
+        `;
+
+        // Reset checkboxes
+        document.getElementById('platform-xhs').checked = true;
+        document.getElementById('platform-douyin').checked = true;
+        document.getElementById('platform-weibo').checked = false;
+        document.getElementById('platform-all').checked = false;
+
+        // Reset radio
+        document.getElementById('type-full').checked = true;
+      }
+    }
+
+    // Initialize: Add some demo data
+    window.addEventListener('load', () => {
+      // You can add demo data here if needed
+      console.log('数据抓取配置平台已加载');
+      console.log('实际使用时，需要连接后端 Node.js 服务调用 scraper.js');
+    });
+  </script>
+</body>
+</html>

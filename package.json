@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "platform": "node platform-server.js",
     "scrape": "node scraper.js",
     "fetch": "node scraper.js fetch",
     "search": "node scraper.js search",
