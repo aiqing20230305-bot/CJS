@@ -1,7 +1,7 @@
 {
   "name": "super-data",
-  "version": "1.0.0",
-  "description": "超级数据 - 社交平台内容采集与分析",
+  "version": "2.0.0",
+  "description": "超级数据 - 社交平台内容采集与分析 (Phoenix)",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "search": "node scraper.js search",
     "trends": "node scraper.js trends",
     "batch": "node scraper.js batch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test_platform.js"
   },
   "keywords": [
     "agent-reach",
@@ -21,6 +21,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/gemini-cli": "^0.36.0"
+    "@google/gemini-cli": "^0.36.0",
+    "archiver": "^7.0.1"
   }
 }

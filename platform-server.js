@@ -10,11 +10,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import archiver from 'archiver';
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PORT = 8080;
+
+// Task registry for progress tracking
+const taskRegistry = new Map();
 
 // MIME types
 const MIME_TYPES = {
@@ -50,6 +54,46 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(500);
       res.end('Error loading page');
     }
+    return;
+  }
+
+  // API: Progress SSE endpoint
+  if (url.pathname.startsWith('/api/progress/') && req.method === 'GET') {
+    const taskId = url.pathname.replace('/api/progress/', '');
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*'
+    });
+
+    // Send initial connection message
+    res.write(`data: ${JSON.stringify({ type: 'connected', taskId })}\n\n`);
+
+    // Register this connection
+    const task = taskRegistry.get(taskId);
+    if (task) {
+      task.connections = task.connections || [];
+      task.connections.push(res);
+
+      // Send any buffered logs
+      if (task.logs && task.logs.length > 0) {
+        task.logs.forEach(log => {
+          res.write(`data: ${JSON.stringify({ type: 'log', message: log })}\n\n`);
+        });
+      }
+    } else {
+      res.write(`data: ${JSON.stringify({ type: 'error', message: 'Task not found' })}\n\n`);
+    }
+
+    // Handle client disconnect
+    req.on('close', () => {
+      if (task && task.connections) {
+        task.connections = task.connections.filter(conn => conn !== res);
+      }
+    });
+
     return;
   }
 
@@ -99,13 +143,33 @@ const server = http.createServer(async (req, res) => {
         console.log('执行命令:', command);
         console.log('API Key:', apiKey ? 'configured' : 'not found');
 
-        // Execute in background with environment variables
-        const childProcess = exec(command, {
-          cwd: __dirname,
-          env: { ...process.env, GEMINI_API_KEY: apiKey || process.env.GEMINI_API_KEY },
-          shell: '/bin/bash'
-        });
+        // Generate task ID
         const taskId = Date.now().toString();
+
+        // Register task
+        taskRegistry.set(taskId, {
+          id: taskId,
+          status: 'running',
+          progress: 0,
+          logs: [],
+          connections: [],
+          startTime: new Date()
+        });
+
+        // Function to broadcast to all SSE connections
+        const broadcast = (data) => {
+          const task = taskRegistry.get(taskId);
+          if (task && task.connections) {
+            const message = `data: ${JSON.stringify(data)}\n\n`;
+            task.connections.forEach(conn => {
+              try {
+                conn.write(message);
+              } catch (err) {
+                console.error('Error writing to SSE connection:', err);
+              }
+            });
+          }
+        };
 
         // Send immediate response
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -115,17 +179,75 @@ const server = http.createServer(async (req, res) => {
           message: '抓取任务已启动'
         }));
 
+        // Execute in background with environment variables
+        const childProcess = exec(command, {
+          cwd: __dirname,
+          env: { ...process.env, GEMINI_API_KEY: apiKey || process.env.GEMINI_API_KEY },
+          shell: '/bin/bash'
+        });
+
+        // Broadcast initial status
+        broadcast({ type: 'status', status: 'running', progress: 10, message: '正在启动抓取引擎...' });
+
         // Handle process output
         childProcess.stdout.on('data', data => {
-          console.log('stdout:', data.toString());
+          const log = data.toString();
+          console.log('stdout:', log);
+
+          const task = taskRegistry.get(taskId);
+          if (task) {
+            task.logs.push(log);
+            task.progress = Math.min(task.progress + 10, 90);
+          }
+
+          broadcast({ type: 'log', message: log });
+          broadcast({ type: 'progress', progress: task ? task.progress : 50 });
         });
 
         childProcess.stderr.on('data', data => {
-          console.error('stderr:', data.toString());
+          const log = data.toString();
+          console.error('stderr:', log);
+
+          const task = taskRegistry.get(taskId);
+          if (task) {
+            task.logs.push(log);
+          }
+
+          broadcast({ type: 'log', message: log, level: 'error' });
         });
 
         childProcess.on('close', code => {
           console.log(`任务完成，退出码: ${code}`);
+
+          const task = taskRegistry.get(taskId);
+          if (task) {
+            task.status = code === 0 ? 'completed' : 'failed';
+            task.progress = 100;
+            task.endTime = new Date();
+          }
+
+          broadcast({
+            type: 'status',
+            status: code === 0 ? 'completed' : 'failed',
+            progress: 100,
+            message: code === 0 ? '✅ 抓取完成' : '❌ 抓取失败',
+            exitCode: code
+          });
+
+          // Close all SSE connections after a delay
+          setTimeout(() => {
+            if (task && task.connections) {
+              task.connections.forEach(conn => {
+                try {
+                  conn.end();
+                } catch (err) {}
+              });
+            }
+            // Clean up task after 5 minutes
+            setTimeout(() => {
+              taskRegistry.delete(taskId);
+            }, 5 * 60 * 1000);
+          }, 2000);
         });
 
       } catch (error) {
@@ -193,6 +315,60 @@ const server = http.createServer(async (req, res) => {
       console.error('Download error:', error);
       res.writeHead(404);
       res.end('File not found');
+    }
+    return;
+  }
+
+  // API: Download all files as zip
+  if (url.pathname === '/api/download-all' && req.method === 'GET') {
+    try {
+      const dataDir = path.join(__dirname, 'data');
+      const files = await fs.readdir(dataDir);
+      const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+      if (jsonFiles.length === 0) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '没有可下载的数据文件' }));
+        return;
+      }
+
+      // Create zip filename with timestamp
+      const timestamp = new Date().toISOString().replace(/:/g, '-').split('.')[0];
+      const zipFilename = `数据包_${timestamp}.zip`;
+      const encodedZipName = encodeURIComponent(zipFilename);
+
+      res.writeHead(200, {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodedZipName}`
+      });
+
+      // Create archiver instance
+      const archive = archiver('zip', { zlib: { level: 9 } });
+
+      archive.on('error', (err) => {
+        console.error('Archiver error:', err);
+        throw err;
+      });
+
+      // Pipe archive to response
+      archive.pipe(res);
+
+      // Add files to archive
+      for (const file of jsonFiles) {
+        const filepath = path.join(dataDir, file);
+        archive.file(filepath, { name: file });
+      }
+
+      // Finalize archive
+      await archive.finalize();
+
+      console.log(`Batch download: ${jsonFiles.length} files compressed`);
+    } catch (error) {
+      console.error('Batch download error:', error);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: error.message }));
+      }
     }
     return;
   }
