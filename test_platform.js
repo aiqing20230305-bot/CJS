@@ -716,6 +716,49 @@ async function testTrendStatisticsUI() {
   }
 }
 
+// Test 18: Canvas趋势图表UI测试
+async function testCanvasChartUI() {
+  log('\n测试 18: Canvas趋势图表 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check canvas container and elements
+    assert(html.includes('id="trendChartContainer"'), 'Canvas图表容器存在');
+    assert(html.includes('id="trendChart"'), 'Canvas元素存在');
+    assert(html.includes('id="canvasTooltip"'), 'Canvas tooltip存在');
+
+    // Check time range selector
+    assert(html.includes('class="time-range-selector"'), '时间范围选择器存在');
+    assert(html.includes('class="time-range-btn'), '时间范围按钮存在');
+    assert(html.includes('data-days="7"'), '7天按钮存在');
+    assert(html.includes('data-days="30"'), '30天按钮存在');
+
+    // Check JavaScript functions
+    assert(html.includes('function drawTrendChart('), 'drawTrendChart 函数存在');
+    assert(html.includes('function switchTimeRange('), 'switchTimeRange 函数存在');
+    assert(html.includes('function updateTrendChart('), 'updateTrendChart 函数存在');
+    assert(html.includes('function setupCanvasInteraction('), 'setupCanvasInteraction 函数存在');
+    assert(html.includes('function formatChartDate('), 'formatChartDate 函数存在');
+
+    // Check CSS styles
+    assert(html.includes('#trendChartContainer'), 'Canvas容器样式存在');
+    assert(html.includes('#trendChart'), 'Canvas元素样式存在');
+    assert(html.includes('.time-range-btn'), '时间按钮样式存在');
+    assert(html.includes('#canvasTooltip'), 'Canvas tooltip样式存在');
+
+    // Check function calls
+    assert(html.includes('updateTrendChart()'), '图表更新调用存在');
+    assert(html.includes('setupCanvasInteraction()'), '交互设置调用存在');
+
+    log('  ✓ 所有Canvas趋势图表UI元素验证通过');
+  } catch (error) {
+    assert(false, `Canvas趋势图表UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -739,6 +782,7 @@ async function runTests() {
   await testPresetUI();
   await testRestoreBannerUI();
   await testTrendStatisticsUI();
+  await testCanvasChartUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);

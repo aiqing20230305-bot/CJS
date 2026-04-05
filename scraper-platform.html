@@ -708,6 +708,64 @@
       display: none;
     }
 
+    /* Canvas Trend Chart */
+    #trendChartContainer {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-top: 24px;
+    }
+
+    #trendChart {
+      width: 100%;
+      height: 300px;
+      cursor: crosshair;
+    }
+
+    .time-range-selector {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+
+    .time-range-btn {
+      padding: 8px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .time-range-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .time-range-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    #canvasTooltip {
+      position: absolute;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 1000;
+      white-space: nowrap;
+      display: none;
+    }
+
     /* Responsive */
     @media (max-width: 767px) {
       .container {
@@ -1499,6 +1557,20 @@
             <div id="chartLegend" style="flex: 1; min-width: 200px;"></div>
           </div>
         </div>
+
+        <!-- Canvas Trend Chart -->
+        <div id="trendChartContainer" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 16px; font-weight: 600; color: var(--text);">📈 数据趋势分析</h3>
+            <div class="time-range-selector">
+              <span style="font-size: 14px; color: var(--text-secondary);">时间范围：</span>
+              <button class="time-range-btn active" data-days="7" onclick="switchTimeRange(7)">7天</button>
+              <button class="time-range-btn" data-days="30" onclick="switchTimeRange(30)">30天</button>
+            </div>
+          </div>
+          <canvas id="trendChart"></canvas>
+          <div id="canvasTooltip"></div>
+        </div>
       </div>
 
       <!-- Filter Restore Banner -->
@@ -2111,6 +2183,217 @@
       } else {
         weekTrendEl.innerHTML = '<span class="trend-desc">暂无对比</span>';
       }
+    }
+
+    // Canvas Trend Chart Functions
+    let currentTimeRange = 7; // Default 7 days
+    let trendChartData = [];
+
+    function drawTrendChart(canvas, data) {
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+
+      // Set canvas size with device pixel ratio for crisp rendering
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+
+      const width = rect.width;
+      const height = rect.height;
+      const padding = { top: 30, right: 40, bottom: 50, left: 50 };
+      const chartWidth = width - padding.left - padding.right;
+      const chartHeight = height - padding.top - padding.bottom;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, width, height);
+
+      if (data.length === 0) {
+        ctx.fillStyle = '#787774';
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('暂无数据', width / 2, height / 2);
+        return;
+      }
+
+      // Calculate max value for Y axis
+      const maxCount = Math.max(...data.map(d => d.count), 1);
+      const yAxisMax = Math.ceil(maxCount * 1.1); // Add 10% padding
+
+      // Draw grid lines and Y axis labels
+      ctx.strokeStyle = '#e9e9e7';
+      ctx.lineWidth = 1;
+      ctx.fillStyle = '#9b9a97';
+      ctx.font = '12px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      ctx.textAlign = 'right';
+
+      const gridLines = 5;
+      for (let i = 0; i <= gridLines; i++) {
+        const y = padding.top + (chartHeight / gridLines) * i;
+        const value = Math.round(yAxisMax - (yAxisMax / gridLines) * i);
+
+        // Grid line
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + chartWidth, y);
+        ctx.stroke();
+
+        // Y axis label
+        ctx.fillText(value.toString(), padding.left - 10, y + 4);
+      }
+
+      // Draw X axis labels
+      ctx.textAlign = 'center';
+      const labelInterval = Math.ceil(data.length / 7); // Show max 7 labels
+      data.forEach((d, i) => {
+        if (i % labelInterval === 0 || i === data.length - 1) {
+          const x = padding.left + (chartWidth / (data.length - 1)) * i;
+          const label = formatChartDate(d.date);
+          ctx.fillText(label, x, height - padding.bottom + 20);
+        }
+      });
+
+      // Draw line chart
+      ctx.strokeStyle = '#2383e2';
+      ctx.lineWidth = 2;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      data.forEach((d, i) => {
+        const x = padding.left + (chartWidth / (data.length - 1)) * i;
+        const y = padding.top + chartHeight - (d.count / yAxisMax) * chartHeight;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+
+      // Draw gradient fill
+      ctx.lineTo(padding.left + chartWidth, padding.top + chartHeight);
+      ctx.lineTo(padding.left, padding.top + chartHeight);
+      ctx.closePath();
+
+      const gradient = ctx.createLinearGradient(0, padding.top, 0, padding.top + chartHeight);
+      gradient.addColorStop(0, 'rgba(35, 131, 226, 0.2)');
+      gradient.addColorStop(1, 'rgba(35, 131, 226, 0.0)');
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // Draw data points
+      ctx.fillStyle = '#2383e2';
+      data.forEach((d, i) => {
+        const x = padding.left + (chartWidth / (data.length - 1)) * i;
+        const y = padding.top + chartHeight - (d.count / yAxisMax) * chartHeight;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Store data for interaction
+      trendChartData = data.map((d, i) => {
+        const x = padding.left + (chartWidth / (data.length - 1)) * i;
+        const y = padding.top + chartHeight - (d.count / yAxisMax) * chartHeight;
+        return { ...d, x, y };
+      });
+    }
+
+    function formatChartDate(dateStr) {
+      const date = new Date(dateStr);
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      return `${month}/${day}`;
+    }
+
+    function switchTimeRange(days) {
+      currentTimeRange = days;
+
+      // Update button states
+      document.querySelectorAll('.time-range-btn').forEach(btn => {
+        if (parseInt(btn.dataset.days) === days) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      // Redraw chart
+      updateTrendChart();
+    }
+
+    function updateTrendChart() {
+      const canvas = document.getElementById('trendChart');
+      if (!canvas) return;
+
+      // Filter files by time range
+      const filteredFiles = filterByTimeRange(allFiles, currentTimeRange);
+
+      // Aggregate data by day
+      const aggregatedData = aggregateByDay(filteredFiles);
+
+      // Draw chart
+      drawTrendChart(canvas, aggregatedData);
+
+      // Show container
+      document.getElementById('trendChartContainer').style.display = 'block';
+    }
+
+    function setupCanvasInteraction() {
+      const canvas = document.getElementById('trendChart');
+      const tooltip = document.getElementById('canvasTooltip');
+      if (!canvas || !tooltip) return;
+
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Find closest data point
+        let closestPoint = null;
+        let minDistance = Infinity;
+
+        trendChartData.forEach(point => {
+          const distance = Math.sqrt(
+            Math.pow(mouseX - point.x, 2) + Math.pow(mouseY - point.y, 2)
+          );
+
+          if (distance < minDistance && distance < 20) {
+            minDistance = distance;
+            closestPoint = point;
+          }
+        });
+
+        if (closestPoint) {
+          // Show tooltip
+          tooltip.style.display = 'block';
+          tooltip.style.left = `${e.clientX + 10}px`;
+          tooltip.style.top = `${e.clientY - 30}px`;
+          tooltip.textContent = `${closestPoint.date}: ${closestPoint.count}个数据包`;
+
+          // Change cursor
+          canvas.style.cursor = 'pointer';
+        } else {
+          // Hide tooltip
+          tooltip.style.display = 'none';
+          canvas.style.cursor = 'crosshair';
+        }
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        tooltip.style.display = 'none';
+        canvas.style.cursor = 'crosshair';
+      });
+
+      // Redraw on resize
+      window.addEventListener('resize', () => {
+        if (allFiles.length > 0) {
+          updateTrendChart();
+        }
+      });
     }
 
     // Search handler with debounce
@@ -2968,6 +3251,9 @@
         // Calculate today and week statistics
         updateTrendStatistics(files);
 
+        // Update trend chart
+        updateTrendChart();
+
         // Show batch buttons and search/filter container
         downloadAllBtn.style.display = 'block';
         exportAllBtn.style.display = 'block';
@@ -3411,6 +3697,9 @@
 
       // Load existing data packages
       loadDataPackages();
+
+      // Setup canvas interaction
+      setupCanvasInteraction();
 
       // Load history from localStorage
       renderHistory();
