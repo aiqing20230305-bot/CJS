@@ -832,6 +832,33 @@ async function testChartExportUI() {
   }
 }
 
+// Test 21: 扩展时间范围UI测试
+async function testExtendedTimeRangeUI() {
+  log('\n测试 21: 扩展时间范围 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check all time range buttons
+    assert(html.includes('data-days="3"'), '3天按钮存在');
+    assert(html.includes('data-days="7"'), '7天按钮存在');
+    assert(html.includes('data-days="14"'), '14天按钮存在');
+    assert(html.includes('data-days="30"'), '30天按钮存在');
+    assert(html.includes('data-days="60"'), '60天按钮存在');
+    assert(html.includes('data-days="90"'), '90天按钮存在');
+    assert(html.includes('data-days="all"'), '全部按钮存在');
+
+    // Check button layout
+    assert(html.includes('flex-wrap: wrap'), '按钮组支持换行');
+
+    log('  ✓ 所有扩展时间范围UI元素验证通过');
+  } catch (error) {
+    assert(false, `扩展时间范围UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -858,6 +885,7 @@ async function runTests() {
   await testCanvasChartUI();
   await testMultiMetricChartUI();
   await testChartExportUI();
+  await testExtendedTimeRangeUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);

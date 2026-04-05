@@ -725,9 +725,10 @@
 
     .time-range-selector {
       display: flex;
-      gap: 12px;
+      gap: 8px;
       margin-bottom: 16px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .time-range-btn {
@@ -1668,8 +1669,13 @@
               <!-- Time Range Selector -->
               <div class="time-range-selector">
                 <span style="font-size: 14px; color: var(--text-secondary);">时间范围：</span>
+                <button class="time-range-btn" data-days="3" onclick="switchTimeRange(3)">3天</button>
                 <button class="time-range-btn active" data-days="7" onclick="switchTimeRange(7)">7天</button>
+                <button class="time-range-btn" data-days="14" onclick="switchTimeRange(14)">14天</button>
                 <button class="time-range-btn" data-days="30" onclick="switchTimeRange(30)">30天</button>
+                <button class="time-range-btn" data-days="60" onclick="switchTimeRange(60)">60天</button>
+                <button class="time-range-btn" data-days="90" onclick="switchTimeRange(90)">90天</button>
+                <button class="time-range-btn" data-days="all" onclick="switchTimeRange('all')">全部</button>
               </div>
               <!-- Export Button -->
               <button id="exportChartBtn" class="btn-export-chart" onclick="exportChartToPNG()" title="导出图表为PNG">
@@ -2510,7 +2516,8 @@
 
       // Update button states
       document.querySelectorAll('.time-range-btn').forEach(btn => {
-        if (parseInt(btn.dataset.days) === days) {
+        const btnDays = btn.dataset.days === 'all' ? 'all' : parseInt(btn.dataset.days);
+        if (btnDays === days) {
           btn.classList.add('active');
         } else {
           btn.classList.remove('active');
