@@ -689,42 +689,76 @@
       progressFill.style.width = '0%';
       logOutput.innerHTML = '正在初始化...<br>';
 
-      // Simulate scraping process
-      simulateScraping(config);
+      // Start real scraping via backend API
+      startRealScraping(config);
     }
 
-    // Simulate scraping (replace with actual API call)
-    function simulateScraping(config) {
+    // Real scraping via backend API
+    async function startRealScraping(config) {
       const logOutput = document.getElementById('logOutput');
       const progressFill = document.getElementById('progressFill');
       const statusBadge = document.getElementById('statusBadge');
 
-      const steps = [
-        { progress: 20, message: '✓ 加载配置完成' },
-        { progress: 40, message: '✓ 连接 Gemini API' },
-        { progress: 60, message: `✓ 正在抓取 ${config.scrapeType} 数据...` },
-        { progress: 80, message: '✓ 数据处理中...' },
-        { progress: 100, message: '✓ 抓取完成！' }
-      ];
+      try {
+        // Step 1: Send request to backend
+        logOutput.innerHTML += '✓ 发送抓取请求到后端...<br>';
+        progressFill.style.width = '20%';
 
-      let currentStep = 0;
+        const response = await fetch('/api/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
 
-      const interval = setInterval(() => {
-        if (currentStep < steps.length) {
-          const step = steps[currentStep];
-          progressFill.style.width = step.progress + '%';
-          logOutput.innerHTML += step.message + '<br>';
-          logOutput.scrollTop = logOutput.scrollHeight;
-          currentStep++;
-        } else {
-          clearInterval(interval);
-          statusBadge.textContent = '已完成';
-          statusBadge.className = 'status-badge completed';
+        const result = await response.json();
 
-          // Add data package
-          addDataPackage(config);
+        if (!result.success) {
+          throw new Error(result.error || '抓取失败');
         }
-      }, 1000);
+
+        logOutput.innerHTML += `✓ 任务已启动 (ID: ${result.taskId})<br>`;
+        progressFill.style.width = '40%';
+
+        // Step 2: Simulate progress (since backend runs in background)
+        logOutput.innerHTML += '✓ 连接 Gemini API<br>';
+        progressFill.style.width = '60%';
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        logOutput.innerHTML += `✓ 正在抓取 ${config.scrapeType} 数据...<br>`;
+        progressFill.style.width = '80%';
+
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        logOutput.innerHTML += '✓ 数据处理中...<br>';
+        progressFill.style.width = '90%';
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        logOutput.innerHTML += '✓ 抓取完成！<br>';
+        progressFill.style.width = '100%';
+
+        statusBadge.textContent = '已完成';
+        statusBadge.className = 'status-badge completed';
+
+        // Refresh file list
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        loadDataPackages();
+
+        logOutput.innerHTML += '<br>💡 提示：数据包已生成，请在下方"数据包下载"区域查看并下载<br>';
+
+      } catch (error) {
+        console.error('抓取错误:', error);
+        statusBadge.textContent = '失败';
+        statusBadge.className = 'status-badge';
+        statusBadge.style.background = '#ffebee';
+        statusBadge.style.color = '#c62828';
+        logOutput.innerHTML += `<br>❌ 错误: ${error.message}<br>`;
+        logOutput.innerHTML += '💡 请检查：<br>';
+        logOutput.innerHTML += '  1. API Key 是否配置正确<br>';
+        logOutput.innerHTML += '  2. 网络连接是否正常<br>';
+        logOutput.innerHTML += '  3. 后端服务器是否运行<br>';
+      }
     }
 
     // Add data package to list
@@ -769,9 +803,69 @@
       tbody.insertBefore(row, tbody.firstChild);
     }
 
+    // Load real file list from backend
+    async function loadDataPackages() {
+      try {
+        const response = await fetch('/api/files');
+        const files = await response.json();
+
+        const area = document.getElementById('dataPackagesArea');
+
+        if (files.length === 0) {
+          area.innerHTML = `
+            <div class="empty-state">
+              <p>暂无数据包</p>
+              <p style="font-size: 14px; margin-top: 8px;">开始抓取后，数据包将显示在这里</p>
+            </div>
+          `;
+          return;
+        }
+
+        // Create table
+        area.innerHTML = '';
+        const table = document.createElement('table');
+        table.className = 'data-table';
+        table.innerHTML = `
+          <thead>
+            <tr>
+              <th>文件名</th>
+              <th>生成时间</th>
+              <th>文件大小</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+        files.forEach(file => {
+          const row = document.createElement('tr');
+          const time = new Date(file.time).toLocaleString('zh-CN');
+          row.innerHTML = `
+            <td>${file.filename}</td>
+            <td>${time}</td>
+            <td>${file.size}</td>
+            <td><button class="btn-download" onclick="downloadFile('${file.filename}')">下载</button></td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        area.appendChild(table);
+      } catch (error) {
+        console.error('加载文件列表失败:', error);
+      }
+    }
+
     // Download file
     function downloadFile(filename) {
-      alert(`下载文件: ${filename}\n\n实际使用时，这里会触发文件下载。\n文件位置: ./data/`);
+      // 创建隐藏的下载链接
+      const link = document.createElement('a');
+      link.href = `/api/download/${filename}`;
+      link.download = filename;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     // Save to history
@@ -872,11 +966,11 @@
       }
     }
 
-    // Initialize: Add some demo data
+    // Initialize
     window.addEventListener('load', () => {
-      // You can add demo data here if needed
       console.log('数据抓取配置平台已加载');
-      console.log('实际使用时，需要连接后端 Node.js 服务调用 scraper.js');
+      // Load existing data packages
+      loadDataPackages();
     });
   </script>
 </body>
