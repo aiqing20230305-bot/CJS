@@ -75,32 +75,36 @@ const server = http.createServer(async (req, res) => {
           if (match) apiKey = match[1].trim();
         } catch {}
 
-        const envPrefix = apiKey ? `GEMINI_API_KEY="${apiKey}"` : '';
-
+        // Build command without environment variable prefix
         switch (scrapeType) {
           case 'market':
-            command = `${envPrefix} node integrations/super-insight.js market "${brand}" "${category}"`;
+            command = `node integrations/super-insight.js market "${brand}" "${category}"`;
             break;
           case 'videos':
-            command = `${envPrefix} node integrations/super-insight.js videos "${brand} ${category}"`;
+            command = `node integrations/super-insight.js videos "${brand} ${category}"`;
             break;
           case 'competitors':
-            command = `${envPrefix} node integrations/super-insight.js competitors "${competitors.join(',')}" "${category}"`;
+            command = `node integrations/super-insight.js competitors "${competitors.join(',')}" "${category}"`;
             break;
           case 'report':
-            command = `${envPrefix} node scraper.js trends "${category}" --days=${days}`;
+            command = `node scraper.js trends "${category}" --days=${days}`;
             break;
           case 'full':
-            command = `${envPrefix} node integrations/super-insight.js full --brand="${brand}" --category="${category}" --competitors="${competitors.join(',')}"`;
+            command = `node integrations/super-insight.js full --brand="${brand}" --category="${category}" --competitors="${competitors.join(',')}"`;
             break;
           default:
             throw new Error('Unknown scrape type');
         }
 
         console.log('执行命令:', command);
+        console.log('API Key:', apiKey ? 'configured' : 'not found');
 
-        // Execute in background
-        const childProcess = exec(command, { cwd: __dirname });
+        // Execute in background with environment variables
+        const childProcess = exec(command, {
+          cwd: __dirname,
+          env: { ...process.env, GEMINI_API_KEY: apiKey || process.env.GEMINI_API_KEY },
+          shell: '/bin/bash'
+        });
         const taskId = Date.now().toString();
 
         // Send immediate response
