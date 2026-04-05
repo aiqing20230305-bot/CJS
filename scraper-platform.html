@@ -694,6 +694,139 @@
         width: 100%;
       }
     }
+
+    /* Search & Filter Section */
+    .search-filter-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: none;
+    }
+
+    .search-filter-container.active {
+      display: block;
+    }
+
+    .search-box {
+      margin-bottom: 16px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 12px 10px 40px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 14px;
+      transition: all 0.15s;
+      background: var(--bg);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23787774' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cpath d='m21 21-4.35-4.35'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: 12px center;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(35, 131, 226, 0.1);
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .filter-select {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-select:hover {
+      border-color: var(--accent);
+    }
+
+    .filter-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(35, 131, 226, 0.1);
+    }
+
+    .sort-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .sort-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+
+    .sort-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .sort-btn.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .search-results {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: none;
+    }
+
+    .search-results.active {
+      display: block;
+    }
+
+    .file-row {
+      transition: all 0.2s;
+    }
+
+    .file-row.hidden {
+      display: none !important;
+    }
+
+    .highlight {
+      background: #fff59d;
+      padding: 2px 4px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -889,6 +1022,67 @@
         </div>
       </div>
 
+      <!-- Search & Filter Section -->
+      <div class="search-filter-container" id="searchFilterContainer">
+        <!-- Search Box -->
+        <div class="search-box">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="搜索文件名、品牌、关键词..."
+            oninput="handleSearch()"
+          >
+        </div>
+
+        <!-- Filters -->
+        <div class="filter-row">
+          <!-- Type Filter -->
+          <div class="filter-group">
+            <span class="filter-label">类型</span>
+            <select class="filter-select" id="typeFilter" onchange="applyFilters()">
+              <option value="all">全部类型</option>
+              <option value="market">市场热点</option>
+              <option value="video">爆款视频</option>
+              <option value="competitor">竞品分析</option>
+              <option value="category">品类报告</option>
+              <option value="full">完整数据包</option>
+            </select>
+          </div>
+
+          <!-- Time Filter -->
+          <div class="filter-group">
+            <span class="filter-label">时间</span>
+            <select class="filter-select" id="timeFilter" onchange="applyFilters()">
+              <option value="all">全部时间</option>
+              <option value="today">今天</option>
+              <option value="week">最近7天</option>
+              <option value="month">最近30天</option>
+            </select>
+          </div>
+
+          <!-- Sort -->
+          <div class="filter-group" style="margin-left: auto;">
+            <span class="filter-label">排序</span>
+            <div class="sort-buttons">
+              <button class="sort-btn active" id="sortTime" onclick="handleSort('time')">
+                时间 ↓
+              </button>
+              <button class="sort-btn" id="sortName" onclick="handleSort('name')">
+                名称 A-Z
+              </button>
+              <button class="sort-btn" id="sortSize" onclick="handleSort('size')">
+                大小 ↓
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Results -->
+        <div class="search-results" id="searchResults">
+          找到 <strong id="resultCount">0</strong> 个数据包
+        </div>
+      </div>
+
       <div id="dataPackagesArea">
         <div class="empty-state">
           <p>暂无数据包</p>
@@ -910,6 +1104,202 @@
   </div>
 
   <script>
+    // Global variables for search & filter
+    let allFiles = [];
+    let searchDebounceTimer = null;
+    let currentSortField = 'time';
+    let currentSortOrder = 'desc';
+
+    // Search handler with debounce
+    function handleSearch() {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        applyFilters();
+      }, 300);
+    }
+
+    // Apply filters
+    function applyFilters() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      const typeFilter = document.getElementById('typeFilter').value;
+      const timeFilter = document.getElementById('timeFilter').value;
+
+      let filteredFiles = allFiles.filter(file => {
+        // Search filter
+        if (searchTerm && !file.filename.toLowerCase().includes(searchTerm)) {
+          return false;
+        }
+
+        // Type filter
+        if (typeFilter !== 'all') {
+          const filename = file.filename.toLowerCase();
+          let matchType = false;
+
+          if (typeFilter === 'market' && filename.includes('市场热点')) matchType = true;
+          else if (typeFilter === 'video' && filename.includes('爆款视频')) matchType = true;
+          else if (typeFilter === 'competitor' && filename.includes('竞品分析')) matchType = true;
+          else if (typeFilter === 'category' && filename.includes('品类报告')) matchType = true;
+          else if (typeFilter === 'full' && filename.includes('完整数据包')) matchType = true;
+
+          if (!matchType) return false;
+        }
+
+        // Time filter
+        if (timeFilter !== 'all') {
+          const fileTime = new Date(file.time);
+          const now = new Date();
+          const diffDays = Math.floor((now - fileTime) / (1000 * 60 * 60 * 24));
+
+          if (timeFilter === 'today' && diffDays > 0) return false;
+          if (timeFilter === 'week' && diffDays > 7) return false;
+          if (timeFilter === 'month' && diffDays > 30) return false;
+        }
+
+        return true;
+      });
+
+      // Apply sorting
+      filteredFiles = sortFiles(filteredFiles, currentSortField, currentSortOrder);
+
+      // Update results count
+      const resultCount = document.getElementById('resultCount');
+      const searchResults = document.getElementById('searchResults');
+      resultCount.textContent = filteredFiles.length;
+
+      if (searchTerm || typeFilter !== 'all' || timeFilter !== 'all') {
+        searchResults.classList.add('active');
+      } else {
+        searchResults.classList.remove('active');
+      }
+
+      // Render filtered files
+      renderFileTable(filteredFiles, searchTerm);
+    }
+
+    // Sort files
+    function sortFiles(files, field, order) {
+      return files.sort((a, b) => {
+        let compareA, compareB;
+
+        if (field === 'time') {
+          compareA = new Date(a.time).getTime();
+          compareB = new Date(b.time).getTime();
+        } else if (field === 'name') {
+          compareA = a.filename.toLowerCase();
+          compareB = b.filename.toLowerCase();
+        } else if (field === 'size') {
+          // Convert size string to bytes for comparison
+          compareA = parseSizeToBytes(a.size);
+          compareB = parseSizeToBytes(b.size);
+        }
+
+        if (order === 'asc') {
+          return compareA > compareB ? 1 : -1;
+        } else {
+          return compareA < compareB ? 1 : -1;
+        }
+      });
+    }
+
+    // Parse size string to bytes
+    function parseSizeToBytes(sizeStr) {
+      const match = sizeStr.match(/^([\d.]+)\s*(\w+)$/);
+      if (!match) return 0;
+
+      const value = parseFloat(match[1]);
+      const unit = match[2].toUpperCase();
+
+      const units = { B: 1, KB: 1024, MB: 1024 * 1024, GB: 1024 * 1024 * 1024 };
+      return value * (units[unit] || 1);
+    }
+
+    // Handle sort
+    function handleSort(field) {
+      // Toggle order if clicking the same field
+      if (currentSortField === field) {
+        currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+      } else {
+        currentSortField = field;
+        currentSortOrder = field === 'name' ? 'asc' : 'desc';
+      }
+
+      // Update button states
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+
+      const btnId = `sort${field.charAt(0).toUpperCase() + field.slice(1)}`;
+      const activeBtn = document.getElementById(btnId);
+      activeBtn.classList.add('active');
+
+      // Update button text with arrow
+      if (field === 'time') {
+        activeBtn.textContent = currentSortOrder === 'desc' ? '时间 ↓' : '时间 ↑';
+      } else if (field === 'name') {
+        activeBtn.textContent = currentSortOrder === 'asc' ? '名称 A-Z' : '名称 Z-A';
+      } else if (field === 'size') {
+        activeBtn.textContent = currentSortOrder === 'desc' ? '大小 ↓' : '大小 ↑';
+      }
+
+      applyFilters();
+    }
+
+    // Render file table with optional highlighting
+    function renderFileTable(files, searchTerm = '') {
+      const area = document.getElementById('dataPackagesArea');
+
+      if (files.length === 0) {
+        area.innerHTML = `
+          <div class="empty-state">
+            <p>未找到匹配的数据包</p>
+            <p style="font-size: 14px; margin-top: 8px;">请尝试调整筛选条件</p>
+          </div>
+        `;
+        return;
+      }
+
+      area.innerHTML = '';
+      const table = document.createElement('table');
+      table.className = 'data-table';
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th>文件名</th>
+            <th>生成时间</th>
+            <th>文件大小</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      `;
+
+      const tbody = table.querySelector('tbody');
+      files.forEach(file => {
+        const row = document.createElement('tr');
+        row.className = 'file-row';
+        const time = new Date(file.time).toLocaleString('zh-CN');
+
+        // Highlight search term in filename
+        let displayFilename = file.filename;
+        if (searchTerm) {
+          const regex = new RegExp(`(${searchTerm})`, 'gi');
+          displayFilename = file.filename.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        row.innerHTML = `
+          <td>${displayFilename}</td>
+          <td>${time}</td>
+          <td>${file.size}</td>
+          <td>
+            <button class="btn-preview" onclick="openPreview('${file.filename}')">👁️ 预览</button>
+            <button class="btn-download" onclick="exportToExcel('${file.filename}')" style="background: #0f7b6c; border-color: #0f7b6c; color: white;">📊 Excel</button>
+            <button class="btn-download" onclick="downloadFile('${file.filename}')">下载</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      area.appendChild(table);
+    }
+
     // Add competitor input
     function addCompetitor() {
       const list = document.getElementById('competitorList');
@@ -1364,6 +1754,7 @@
         const area = document.getElementById('dataPackagesArea');
         const downloadAllBtn = document.getElementById('downloadAllBtn');
         const exportAllBtn = document.getElementById('exportAllBtn');
+        const searchFilterContainer = document.getElementById('searchFilterContainer');
 
         if (files.length === 0) {
           area.innerHTML = `
@@ -1374,47 +1765,20 @@
           `;
           downloadAllBtn.style.display = 'none';
           exportAllBtn.style.display = 'none';
+          searchFilterContainer.classList.remove('active');
           return;
         }
 
-        // Show batch buttons
+        // Store files globally for filtering
+        allFiles = files;
+
+        // Show batch buttons and search/filter container
         downloadAllBtn.style.display = 'block';
         exportAllBtn.style.display = 'block';
+        searchFilterContainer.classList.add('active');
 
-        // Create table
-        area.innerHTML = '';
-        const table = document.createElement('table');
-        table.className = 'data-table';
-        table.innerHTML = `
-          <thead>
-            <tr>
-              <th>文件名</th>
-              <th>生成时间</th>
-              <th>文件大小</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        `;
-
-        const tbody = table.querySelector('tbody');
-        files.forEach(file => {
-          const row = document.createElement('tr');
-          const time = new Date(file.time).toLocaleString('zh-CN');
-          row.innerHTML = `
-            <td>${file.filename}</td>
-            <td>${time}</td>
-            <td>${file.size}</td>
-            <td>
-              <button class="btn-preview" onclick="openPreview('${file.filename}')">👁️ 预览</button>
-              <button class="btn-download" onclick="exportToExcel('${file.filename}')" style="background: #0f7b6c; border-color: #0f7b6c; color: white;">📊 Excel</button>
-              <button class="btn-download" onclick="downloadFile('${file.filename}')">下载</button>
-            </td>
-          `;
-          tbody.appendChild(row);
-        });
-
-        area.appendChild(table);
+        // Render table with current filters applied
+        applyFilters();
       } catch (error) {
         console.error('加载文件列表失败:', error);
       }

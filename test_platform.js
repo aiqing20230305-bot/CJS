@@ -389,6 +389,54 @@ async function testScrapeAPI() {
   }
 }
 
+// Test 11: 搜索筛选UI元素测试
+async function testSearchFilterUI() {
+  log('\n测试 11: 搜索筛选 UI 元素', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check search input
+    assert(html.includes('id="searchInput"'), '搜索框存在');
+    assert(html.includes('placeholder="搜索文件名、品牌、关键词..."'), '搜索框提示文字正确');
+
+    // Check type filter
+    assert(html.includes('id="typeFilter"'), '类型筛选器存在');
+    assert(html.includes('<option value="market">市场热点</option>'), '市场热点选项存在');
+    assert(html.includes('<option value="video">爆款视频</option>'), '爆款视频选项存在');
+    assert(html.includes('<option value="competitor">竞品分析</option>'), '竞品分析选项存在');
+
+    // Check time filter
+    assert(html.includes('id="timeFilter"'), '时间筛选器存在');
+    assert(html.includes('<option value="today">今天</option>'), '今天选项存在');
+    assert(html.includes('<option value="week">最近7天</option>'), '最近7天选项存在');
+    assert(html.includes('<option value="month">最近30天</option>'), '最近30天选项存在');
+
+    // Check sort buttons
+    assert(html.includes('id="sortTime"'), '时间排序按钮存在');
+    assert(html.includes('id="sortName"'), '名称排序按钮存在');
+    assert(html.includes('id="sortSize"'), '大小排序按钮存在');
+
+    // Check functions
+    assert(html.includes('function handleSearch()'), 'handleSearch 函数存在');
+    assert(html.includes('function applyFilters()'), 'applyFilters 函数存在');
+    assert(html.includes('function handleSort('), 'handleSort 函数存在');
+    assert(html.includes('function renderFileTable('), 'renderFileTable 函数存在');
+
+    // Check CSS classes
+    assert(html.includes('.search-filter-container'), '搜索筛选容器样式存在');
+    assert(html.includes('.search-box'), '搜索框样式存在');
+    assert(html.includes('.filter-select'), '筛选器样式存在');
+    assert(html.includes('.sort-btn'), '排序按钮样式存在');
+
+    log('  ✓ 所有搜索筛选UI元素验证通过');
+  } catch (error) {
+    assert(false, `搜索筛选UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -405,6 +453,7 @@ async function runTests() {
   await testBatchExcelExport();
   await testPreviewAPI();
   await testScrapeAPI();
+  await testSearchFilterUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
