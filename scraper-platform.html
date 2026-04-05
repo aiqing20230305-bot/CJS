@@ -870,6 +870,85 @@
       font-weight: 500;
     }
 
+    /* Insights Container */
+    .insights-container {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .insight-card {
+      flex: 1;
+      min-width: 200px;
+      max-width: 300px;
+      padding: 12px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: all 0.15s;
+    }
+
+    .insight-card:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .insight-card.positive {
+      border-left: 3px solid #10b981;
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .insight-card.negative {
+      border-left: 3px solid #ef4444;
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    .insight-card.warning {
+      border-left: 3px solid #f59e0b;
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    .insight-card.info {
+      border-left: 3px solid #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .insight-card.neutral {
+      border-left: 3px solid #9b9a97;
+      background: rgba(155, 154, 151, 0.05);
+    }
+
+    .insight-card.highlight {
+      border-left: 3px solid #8b5cf6;
+      background: rgba(139, 92, 246, 0.05);
+    }
+
+    .insight-icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .insight-content {
+      flex: 1;
+    }
+
+    .insight-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .insight-description {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
     #canvasTooltip {
       position: absolute;
       background: rgba(0, 0, 0, 0.85);
@@ -1752,6 +1831,8 @@
               </div>
             </div>
           </div>
+          <!-- Insights Container -->
+          <div id="insightsContainer" class="insights-container" style="display: none;"></div>
           <canvas id="trendChart"></canvas>
           <div id="canvasTooltip"></div>
         </div>
@@ -3030,6 +3111,185 @@
       updateTrendChart();
     }
 
+    // Analyze trend and generate insights
+    function analyzeTrend(data) {
+      if (!data || data.length < 2) {
+        return { growthRate: 0, avgGrowthRate: 0, direction: 'stable', volatility: 0 };
+      }
+
+      // Calculate overall growth rate (first vs last)
+      const firstValue = data[0].count;
+      const lastValue = data[data.length - 1].count;
+      const growthRate = ((lastValue - firstValue) / firstValue * 100).toFixed(1);
+
+      // Calculate average daily growth rate
+      let totalGrowth = 0;
+      let growthCount = 0;
+      for (let i = 1; i < data.length; i++) {
+        if (data[i - 1].count > 0) {
+          const dailyGrowth = (data[i].count - data[i - 1].count) / data[i - 1].count * 100;
+          totalGrowth += dailyGrowth;
+          growthCount++;
+        }
+      }
+      const avgGrowthRate = growthCount > 0 ? (totalGrowth / growthCount).toFixed(1) : 0;
+
+      // Determine trend direction
+      let direction = 'stable';
+      if (growthRate > 10) {
+        direction = 'rising';
+      } else if (growthRate < -10) {
+        direction = 'falling';
+      }
+
+      // Calculate volatility (standard deviation)
+      const values = data.map(d => d.count);
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+      const volatility = Math.sqrt(variance).toFixed(1);
+
+      return { growthRate, avgGrowthRate, direction, volatility, mean };
+    }
+
+    // Detect anomalies in data
+    function detectAnomalies(data) {
+      if (!data || data.length < 3) {
+        return { highPoints: [], lowPoints: [] };
+      }
+
+      const values = data.map(d => d.count);
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+      const stdDev = Math.sqrt(variance);
+
+      const highThreshold = mean + 2 * stdDev;
+      const lowThreshold = mean - 2 * stdDev;
+
+      const highPoints = [];
+      const lowPoints = [];
+
+      data.forEach((d, i) => {
+        if (d.count > highThreshold) {
+          highPoints.push({ date: d.date, value: d.count, index: i });
+        } else if (d.count < lowThreshold && d.count > 0) {
+          lowPoints.push({ date: d.date, value: d.count, index: i });
+        }
+      });
+
+      return { highPoints, lowPoints };
+    }
+
+    // Generate insights based on trend analysis
+    function generateInsights(data) {
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      const insights = [];
+      const trend = analyzeTrend(data);
+      const anomalies = detectAnomalies(data);
+
+      // Insight 1: Overall trend
+      if (trend.direction === 'rising') {
+        insights.push({
+          icon: '📈',
+          title: '整体增长趋势',
+          description: `数据整体呈上升趋势，增长率 ${trend.growthRate}%`,
+          type: 'positive'
+        });
+      } else if (trend.direction === 'falling') {
+        insights.push({
+          icon: '📉',
+          title: '整体下降趋势',
+          description: `数据整体呈下降趋势，下降幅度 ${Math.abs(trend.growthRate)}%`,
+          type: 'negative'
+        });
+      } else {
+        insights.push({
+          icon: '➡️',
+          title: '数据相对稳定',
+          description: `数据波动较小，变化幅度 ${Math.abs(trend.growthRate)}%`,
+          type: 'neutral'
+        });
+      }
+
+      // Insight 2: Average daily growth
+      if (Math.abs(trend.avgGrowthRate) > 5) {
+        insights.push({
+          icon: trend.avgGrowthRate > 0 ? '⚡' : '⚠️',
+          title: '日均变化显著',
+          description: `平均每日${trend.avgGrowthRate > 0 ? '增长' : '下降'} ${Math.abs(trend.avgGrowthRate)}%`,
+          type: trend.avgGrowthRate > 0 ? 'positive' : 'warning'
+        });
+      }
+
+      // Insight 3: Volatility
+      if (trend.volatility > trend.mean * 0.5) {
+        insights.push({
+          icon: '🌊',
+          title: '数据波动较大',
+          description: `标准差 ${trend.volatility}，数据起伏明显`,
+          type: 'info'
+        });
+      } else {
+        insights.push({
+          icon: '🎯',
+          title: '数据相对平稳',
+          description: `标准差 ${trend.volatility}，变化较为稳定`,
+          type: 'info'
+        });
+      }
+
+      // Insight 4: High anomalies
+      if (anomalies.highPoints.length > 0) {
+        const point = anomalies.highPoints[0];
+        insights.push({
+          icon: '🔥',
+          title: '发现异常高峰',
+          description: `${point.date} 达到 ${point.value}，远超平均水平`,
+          type: 'highlight'
+        });
+      }
+
+      // Insight 5: Low anomalies
+      if (anomalies.lowPoints.length > 0) {
+        const point = anomalies.lowPoints[0];
+        insights.push({
+          icon: '⚡',
+          title: '发现异常低谷',
+          description: `${point.date} 仅 ${point.value}，需关注原因`,
+          type: 'warning'
+        });
+      }
+
+      // Return top 5 insights
+      return insights.slice(0, 5);
+    }
+
+    // Update insights UI
+    function updateInsightsUI(data) {
+      const container = document.getElementById('insightsContainer');
+      if (!container || !data || data.length === 0) return;
+
+      const insights = generateInsights(data);
+
+      if (insights.length === 0) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'flex';
+      container.innerHTML = insights.map(insight => `
+        <div class="insight-card ${insight.type}">
+          <div class="insight-icon">${insight.icon}</div>
+          <div class="insight-content">
+            <div class="insight-title">${insight.title}</div>
+            <div class="insight-description">${insight.description}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
     function switchChartType(type) {
       currentChartType = type;
 
@@ -3067,6 +3327,9 @@
 
       // Show container
       document.getElementById('trendChartContainer').style.display = 'block';
+
+      // Update insights
+      updateInsightsUI(aggregatedData);
     }
 
     function exportChartToPNG() {

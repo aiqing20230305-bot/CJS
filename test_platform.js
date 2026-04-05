@@ -933,6 +933,38 @@ async function testDataLabelsUI() {
   }
 }
 
+// Test 24: 趋势洞察UI测试
+async function testTrendInsightsUI() {
+  log('\n测试 24: 趋势洞察 UI', colors.blue);
+  try {
+    const res = await makeRequest('/');
+    assert(res.statusCode === 200, '页面加载成功');
+
+    const html = res.body;
+
+    // Check JavaScript functions
+    assert(html.includes('function analyzeTrend('), 'analyzeTrend 函数存在');
+    assert(html.includes('function detectAnomalies('), 'detectAnomalies 函数存在');
+    assert(html.includes('function generateInsights('), 'generateInsights 函数存在');
+    assert(html.includes('function updateInsightsUI('), 'updateInsightsUI 函数存在');
+
+    // Check UI elements
+    assert(html.includes('id="insightsContainer"'), '洞察容器存在');
+    assert(html.includes('class="insights-container"'), '洞察容器class存在');
+
+    // Check CSS styles
+    assert(html.includes('.insights-container'), '洞察容器样式存在');
+    assert(html.includes('.insight-card'), '洞察卡片样式存在');
+
+    // Check updateInsightsUI is called in updateTrendChart
+    assert(html.includes('updateInsightsUI(aggregatedData)'), 'updateInsightsUI在updateTrendChart中被调用');
+
+    log('  ✓ 所有趋势洞察UI元素验证通过');
+  } catch (error) {
+    assert(false, `趋势洞察UI测试失败: ${error.message}`);
+  }
+}
+
 // Run all tests
 async function runTests() {
   log('╔══════════════════════════════════════════╗', colors.blue);
@@ -962,6 +994,7 @@ async function runTests() {
   await testExtendedTimeRangeUI();
   await testChartTypeUI();
   await testDataLabelsUI();
+  await testTrendInsightsUI();
 
   // Summary
   log('\n╔══════════════════════════════════════════╗', colors.blue);
