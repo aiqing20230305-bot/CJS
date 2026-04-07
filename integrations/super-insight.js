@@ -170,7 +170,7 @@ export class SuperInsightCollector {
 
   /**
    * 一键采集完整数据包
-   * 采集超级洞察所需的全部数据源
+   * 采集超级洞察所需的全部数据源（支持部分失败）
    */
   async collectFullDataset(config) {
     const { brand, category, competitors, keywords } = config;
@@ -179,43 +179,90 @@ export class SuperInsightCollector {
     console.log(`品牌: ${brand}`);
     console.log(`品类: ${category}`);
     console.log(`竞品: ${competitors.join(', ')}`);
+    console.log(`⚠️  注意: 各步骤失败不会阻塞整体流程\n`);
 
     const results = {
       startTime: new Date().toISOString(),
       config,
-      data: {}
+      data: {},
+      errors: []
     };
 
+    // 1. 市场热点（允许失败）
     try {
-      // 1. 市场热点
+      console.log(`\n[1/4] 采集市场热点...`);
       results.data.marketTrends = await this.collectMarketTrends(brand, category);
-
-      // 2. 爆款视频
-      results.data.viralVideos = await this.collectViralVideos(keywords || `${brand} ${category}`);
-
-      // 3. 竞品分析
-      results.data.competitors = await this.collectCompetitorData(competitors, category);
-
-      // 4. 品类报告
-      results.data.categoryReport = await this.collectCategoryReport(category);
-
-      results.endTime = new Date().toISOString();
-      results.status = 'success';
-
-      await this._saveData(results, `full_dataset_${brand}_${Date.now()}.json`);
-
-      console.log(`\n✅ 数据采集完成！`);
-      console.log(`输出目录: ${this.outputDir}`);
-
-      return results;
+      console.log(`✅ 市场热点采集成功`);
     } catch (error) {
-      results.endTime = new Date().toISOString();
-      results.status = 'error';
-      results.error = error.message;
-
-      console.error(`\n❌ 采集失败:`, error);
-      throw error;
+      console.error(`❌ 市场热点采集失败: ${error.message}`);
+      results.errors.push({ step: 'marketTrends', error: error.message });
+      results.data.marketTrends = null;
     }
+
+    // 2. 爆款视频（允许失败）
+    try {
+      console.log(`\n[2/4] 采集爆款视频...`);
+      results.data.viralVideos = await this.collectViralVideos(keywords || `${brand} ${category}`);
+      console.log(`✅ 爆款视频采集成功`);
+    } catch (error) {
+      console.error(`❌ 爆款视频采集失败: ${error.message}`);
+      results.errors.push({ step: 'viralVideos', error: error.message });
+      results.data.viralVideos = null;
+    }
+
+    // 3. 竞品分析（允许失败）
+    try {
+      console.log(`\n[3/4] 采集竞品数据...`);
+      results.data.competitors = await this.collectCompetitorData(competitors, category);
+      console.log(`✅ 竞品数据采集成功`);
+    } catch (error) {
+      console.error(`❌ 竞品数据采集失败: ${error.message}`);
+      results.errors.push({ step: 'competitors', error: error.message });
+      results.data.competitors = null;
+    }
+
+    // 4. 品类报告（允许失败）
+    try {
+      console.log(`\n[4/4] 采集品类报告...`);
+      results.data.categoryReport = await this.collectCategoryReport(category);
+      console.log(`✅ 品类报告采集成功`);
+    } catch (error) {
+      console.error(`❌ 品类报告采集失败: ${error.message}`);
+      results.errors.push({ step: 'categoryReport', error: error.message });
+      results.data.categoryReport = null;
+    }
+
+    results.endTime = new Date().toISOString();
+
+    // 判断整体状态
+    const successfulSteps = Object.values(results.data).filter(v => v !== null).length;
+    const totalSteps = 4;
+
+    if (successfulSteps === 0) {
+      results.status = 'failed';
+      console.error(`\n❌ 所有步骤均失败！`);
+      throw new Error('所有数据采集步骤均失败');
+    } else if (successfulSteps < totalSteps) {
+      results.status = 'partial_success';
+      console.log(`\n⚠️  部分成功: ${successfulSteps}/${totalSteps} 步骤完成`);
+    } else {
+      results.status = 'success';
+      console.log(`\n✅ 全部成功: ${successfulSteps}/${totalSteps} 步骤完成`);
+    }
+
+    // 保存到data目录（而非data/super-insight）
+    const dataDir = path.join(process.cwd(), 'data');
+    const filename = `full_${brand}_${Date.now()}.json`;
+    await fs.mkdir(dataDir, { recursive: true });
+    await fs.writeFile(
+      path.join(dataDir, filename),
+      JSON.stringify(results, null, 2)
+    );
+
+    console.log(`💾 已保存: data/${filename}`);
+    console.log(`📊 成功率: ${(successfulSteps / totalSteps * 100).toFixed(0)}%`);
+
+    return results;
   }
 
   /**

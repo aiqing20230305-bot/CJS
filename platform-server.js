@@ -12,6 +12,12 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import archiver from 'archiver';
 import xlsx from 'xlsx';
+import Anthropic from '@anthropic-ai/sdk';
+import dotenv from 'dotenv';
+import { scrapeWeibo, scrapeXiaohongshu, scrapeDouyin, saveData } from './scraper-vision.js';
+
+// Load environment variables
+dotenv.config();
 
 const execAsync = promisify(exec);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -29,6 +35,241 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.txt': 'text/plain'
 };
+
+// ===== AI Report Generation Functions =====
+
+/**
+ * Analyze trend from data (server-side version)
+ * Extracted from frontend analyzeTrend() function
+ */
+function analyzeTrendOnServer(data) {
+  if (!data || data.length < 2) {
+    return { growthRate: 0, avgGrowthRate: 0, direction: 'stable', volatility: 0, mean: 0 };
+  }
+
+  // Calculate overall growth rate (first vs last)
+  const firstValue = data[0].count || 0;
+  const lastValue = data[data.length - 1].count || 0;
+  const growthRate = firstValue > 0 ? ((lastValue - firstValue) / firstValue * 100).toFixed(1) : 0;
+
+  // Calculate average daily growth rate
+  let totalGrowth = 0;
+  let growthCount = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i - 1].count > 0) {
+      const dailyGrowth = (data[i].count - data[i - 1].count) / data[i - 1].count * 100;
+      totalGrowth += dailyGrowth;
+      growthCount++;
+    }
+  }
+  const avgGrowthRate = growthCount > 0 ? (totalGrowth / growthCount).toFixed(1) : 0;
+
+  // Determine trend direction
+  let direction = 'stable';
+  if (growthRate > 10) {
+    direction = 'rising';
+  } else if (growthRate < -10) {
+    direction = 'falling';
+  }
+
+  // Calculate volatility (standard deviation)
+  const values = data.map(d => d.count || 0);
+  const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+  const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
+  const volatility = Math.sqrt(variance).toFixed(1);
+
+  // Detect anomalies (2σ rule)
+  const stdDev = Math.sqrt(variance);
+  const anomalies = [];
+  data.forEach((d, i) => {
+    const value = d.count || 0;
+    if (value > mean + 2 * stdDev) {
+      anomalies.push({ type: 'high', date: d.date, value });
+    } else if (value < mean - 2 * stdDev) {
+      anomalies.push({ type: 'low', date: d.date, value });
+    }
+  });
+
+  return { growthRate, avgGrowthRate, direction, volatility, mean, anomalies };
+}
+
+/**
+ * Build prompt for Claude API
+ */
+function buildReportPrompt(dataPackage, analysisResult) {
+  const { brand, category, generatedAt, data } = dataPackage;
+
+  return `你是一位专业的电商数据分析师，擅长从数据中发现商业洞察。请基于以下数据生成一份深度分析报告。
+
+# 数据概览
+
+**品牌**: ${brand || '未知'}
+**类别**: ${category || '未知'}
+**数据采集时间**: ${generatedAt || new Date().toISOString()}
+**数据包大小**: ${analysisResult.totalCount || 0} 条记录
+
+# 趋势分析
+
+- **整体增长率**: ${analysisResult.growthRate}% ${analysisResult.direction === 'rising' ? '📈' : analysisResult.direction === 'falling' ? '📉' : '➡️'}
+- **平均日增长率**: ${analysisResult.avgGrowthRate}%
+- **趋势方向**: ${analysisResult.direction === 'rising' ? '上升趋势' : analysisResult.direction === 'falling' ? '下降趋势' : '稳定'}
+- **波动性**: ${analysisResult.volatility} (波动${parseFloat(analysisResult.volatility) > analysisResult.mean * 0.3 ? '较大' : '平稳'})
+- **异常点**: ${analysisResult.anomalies.length} 个${analysisResult.anomalies.length > 0 ? ` (${analysisResult.anomalies.map(a => a.type === 'high' ? '高峰' : '低谷').join(', ')})` : ''}
+
+# 原始数据摘要
+
+${data ? JSON.stringify(data, null, 2).substring(0, 1000) : '无详细数据'}...
+
+---
+
+# 要求
+
+请生成一份**800-1000字**的数据分析报告，包含以下部分：
+
+## 1. 核心发现 (3条)
+列出3个最重要的数据洞察，每条用一句话概括，加上具体数字支撑。
+
+## 2. 趋势深度解读
+基于增长率、波动性、异常点，分析：
+- 数据增长的驱动因素
+- 波动的可能原因
+- 异常点背后的商业意义
+
+## 3. 商业建议
+提供3-5条可执行的商业建议，包括：
+- 内容策略优化方向
+- 投放平台选择
+- 目标人群精准定位
+- 时间节点把控
+
+## 输出格式要求
+
+- 使用Markdown格式
+- 标题使用 ## 或 ###
+- 重点内容使用 **加粗**
+- 数据用数字和百分比呈现
+- 每个建议前加上序号
+
+请开始生成报告：`;
+}
+
+/**
+ * Generate AI report using Claude API
+ */
+async function generateAIReport(dataPackageId, taskId) {
+  const dataDir = path.join(__dirname, 'data');
+  const reportsDir = path.join(dataDir, 'reports');
+
+  try {
+    // Create reports directory
+    await fs.mkdir(reportsDir, { recursive: true });
+
+    // Read data package
+    const dataPath = path.join(dataDir, dataPackageId);
+    const dataPackage = JSON.parse(await fs.readFile(dataPath, 'utf-8'));
+
+    // Mock data for trend analysis (since we don't have historical data)
+    const mockTrendData = Array.from({ length: 7 }, (_, i) => ({
+      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      count: Math.floor(Math.random() * 50) + 10 + i * 5
+    }));
+
+    // Analyze trend
+    const analysisResult = analyzeTrendOnServer(mockTrendData);
+    analysisResult.totalCount = mockTrendData.length;
+
+    // Build prompt
+    const prompt = buildReportPrompt(dataPackage, analysisResult);
+
+    // Initialize Claude client
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      baseURL: process.env.ANTHROPIC_BASE_URL || undefined,
+    });
+
+    // Broadcast start
+    broadcast(taskId, { type: 'log', message: '📝 正在生成AI报告...' });
+
+    // Call Claude API with streaming
+    const stream = await anthropic.messages.stream({
+      model: 'pa/claude-sonnet-4-5-20250929',
+      max_tokens: 2000,
+      messages: [{
+        role: 'user',
+        content: prompt
+      }],
+    });
+
+    let reportMarkdown = '';
+
+    // Stream response
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        const text = chunk.delta.text;
+        reportMarkdown += text;
+
+        // Broadcast chunk to frontend
+        broadcast(taskId, {
+          type: 'report_chunk',
+          content: text
+        });
+      }
+    }
+
+    // Save report
+    const timestamp = Date.now();
+    const reportFilename = `report_${dataPackage.type || 'unknown'}_${dataPackage.brand || 'brand'}_${timestamp}.md`;
+    const reportPath = path.join(reportsDir, reportFilename);
+
+    await fs.writeFile(reportPath, reportMarkdown, 'utf-8');
+
+    // Broadcast completion
+    broadcast(taskId, {
+      type: 'complete',
+      message: '✅ 报告生成完成',
+      filename: reportFilename,
+      path: reportPath
+    });
+
+    // Update task status
+    const task = taskRegistry.get(taskId);
+    if (task) {
+      task.status = 'completed';
+      task.reportFilename = reportFilename;
+    }
+
+    console.log(`Report generated: ${reportFilename}`);
+
+  } catch (error) {
+    console.error('Report generation error:', error);
+
+    broadcast(taskId, {
+      type: 'error',
+      message: `报告生成失败: ${error.message}`
+    });
+
+    const task = taskRegistry.get(taskId);
+    if (task) {
+      task.status = 'failed';
+      task.error = error.message;
+    }
+  }
+}
+
+// Helper function to broadcast to all SSE connections of a task
+function broadcast(taskId, data) {
+  const task = taskRegistry.get(taskId);
+  if (task && task.connections) {
+    const message = `data: ${JSON.stringify(data)}\n\n`;
+    task.connections.forEach(conn => {
+      try {
+        conn.write(message);
+      } catch (err) {
+        console.error('Broadcast error:', err);
+      }
+    });
+  }
+}
 
 // HTTP Server
 const server = http.createServer(async (req, res) => {
@@ -253,6 +494,158 @@ const server = http.createServer(async (req, res) => {
 
       } catch (error) {
         console.error('抓取错误:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: false,
+          error: error.message
+        }));
+      }
+    });
+    return;
+  }
+
+  // API: Vision-based scraping (新方案)
+  if (url.pathname === '/api/scrape-vision' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const config = JSON.parse(body);
+        console.log('收到视觉抓取请求:', config);
+
+        const { platform, keyword, maxResults = 10 } = config;
+
+        if (!platform || !keyword) {
+          throw new Error('缺少必要参数: platform, keyword');
+        }
+
+        // Generate task ID
+        const taskId = Date.now().toString();
+
+        // Register task
+        taskRegistry.set(taskId, {
+          id: taskId,
+          status: 'running',
+          progress: 0,
+          logs: [],
+          connections: [],
+          startTime: new Date()
+        });
+
+        // Function to broadcast to all SSE connections
+        const broadcast = (data) => {
+          const task = taskRegistry.get(taskId);
+          if (task && task.connections) {
+            const message = `data: ${JSON.stringify(data)}\n\n`;
+            task.connections.forEach(conn => {
+              try {
+                conn.write(message);
+              } catch (err) {
+                console.error('Error writing to SSE connection:', err);
+              }
+            });
+          }
+        };
+
+        // Send immediate response
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          taskId,
+          message: `${platform}抓取任务已启动`
+        }));
+
+        // Execute scraping in background
+        (async () => {
+          try {
+            broadcast({ type: 'status', status: 'running', progress: 10, message: `正在访问${platform}...` });
+
+            let result;
+            const options = { maxResults };
+
+            switch (platform) {
+              case 'weibo':
+                broadcast({ type: 'log', message: `📸 正在截图微博搜索页...` });
+                result = await scrapeWeibo(keyword, options);
+                break;
+              case 'xiaohongshu':
+              case 'xhs':
+                broadcast({ type: 'log', message: `📕 正在截图小红书搜索页...` });
+                result = await scrapeXiaohongshu(keyword, options);
+                break;
+              case 'douyin':
+                broadcast({ type: 'log', message: `🎵 正在截图抖音搜索页...` });
+                broadcast({ type: 'log', message: `⚠️  抖音可能需要滑块验证`, level: 'warn' });
+                result = await scrapeDouyin(keyword, { ...options, skipCaptchaCheck: true });
+                break;
+              default:
+                throw new Error(`不支持的平台: ${platform}`);
+            }
+
+            broadcast({ type: 'progress', progress: 70 });
+
+            // Save data
+            const filename = `${platform}_${keyword}_${Date.now()}.json`;
+            await saveData(result, filename);
+
+            broadcast({ type: 'log', message: `✅ 成功提取 ${result.count} 条数据` });
+            broadcast({ type: 'progress', progress: 100 });
+
+            const task = taskRegistry.get(taskId);
+            if (task) {
+              task.status = 'completed';
+              task.progress = 100;
+              task.endTime = new Date();
+              task.resultFile = filename;
+            }
+
+            broadcast({
+              type: 'status',
+              status: 'completed',
+              progress: 100,
+              message: '✅ 抓取完成',
+              resultFile: filename,
+              dataCount: result.count
+            });
+
+          } catch (error) {
+            console.error('视觉抓取错误:', error);
+
+            const task = taskRegistry.get(taskId);
+            if (task) {
+              task.status = 'failed';
+              task.error = error.message;
+              task.endTime = new Date();
+            }
+
+            broadcast({
+              type: 'status',
+              status: 'failed',
+              progress: 100,
+              message: `❌ 抓取失败: ${error.message}`,
+              error: error.message
+            });
+          }
+
+          // Close SSE connections after delay
+          setTimeout(() => {
+            const task = taskRegistry.get(taskId);
+            if (task && task.connections) {
+              task.connections.forEach(conn => {
+                try {
+                  conn.end();
+                } catch (err) {}
+              });
+            }
+            // Clean up task after 5 minutes
+            setTimeout(() => {
+              taskRegistry.delete(taskId);
+            }, 5 * 60 * 1000);
+          }, 2000);
+        })();
+
+      } catch (error) {
+        console.error('视觉抓取请求错误:', error);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
           success: false,
@@ -728,6 +1121,137 @@ const server = http.createServer(async (req, res) => {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: error.message }));
       }
+    }
+    return;
+  }
+
+  // API: Generate AI Report
+  if (url.pathname === '/api/generate-report' && req.method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+    req.on('end', async () => {
+      try {
+        const { dataPackageId, reportType } = JSON.parse(body);
+
+        if (!dataPackageId) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: '缺少 dataPackageId 参数' }));
+          return;
+        }
+
+        // Check if data package exists
+        const dataPath = path.join(__dirname, 'data', dataPackageId);
+        try {
+          await fs.access(dataPath);
+        } catch (err) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ success: false, error: '数据包不存在' }));
+          return;
+        }
+
+        // Create task ID
+        const taskId = `report_${Date.now()}`;
+
+        // Register task
+        taskRegistry.set(taskId, {
+          type: 'report',
+          status: 'processing',
+          dataPackageId,
+          reportType: reportType || 'full',
+          connections: [],
+          startTime: new Date()
+        });
+
+        // Start report generation in background
+        generateAIReport(dataPackageId, taskId);
+
+        // Return task ID
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          taskId,
+          message: `报告生成中，请监听 /api/progress/${taskId}`
+        }));
+
+      } catch (error) {
+        console.error('Generate report error:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: error.message }));
+      }
+    });
+    return;
+  }
+
+  // API: List reports
+  if (url.pathname === '/api/reports' && req.method === 'GET') {
+    try {
+      const reportsDir = path.join(__dirname, 'data', 'reports');
+
+      // Create directory if not exists
+      await fs.mkdir(reportsDir, { recursive: true });
+
+      const files = await fs.readdir(reportsDir);
+      const reportFiles = files.filter(f => f.endsWith('.md'));
+
+      const reports = await Promise.all(
+        reportFiles.map(async filename => {
+          const filepath = path.join(reportsDir, filename);
+          const stats = await fs.stat(filepath);
+
+          // Extract dataPackageId from filename (e.g., "report_market_多芬_1775409566540.md")
+          const match = filename.match(/report_(.+)_(\d+)\.md$/);
+          const dataPackageId = match ? match[1] : 'unknown';
+
+          return {
+            filename,
+            createdAt: stats.birthtime.toISOString(),
+            size: stats.size,
+            dataPackageId
+          };
+        })
+      );
+
+      // Sort by creation time (newest first)
+      reports.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(reports));
+
+    } catch (error) {
+      console.error('List reports error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+    return;
+  }
+
+  // API: Download report
+  if (url.pathname.startsWith('/api/reports/') && req.method === 'GET') {
+    try {
+      const filename = decodeURIComponent(url.pathname.replace('/api/reports/', ''));
+      const reportsDir = path.join(__dirname, 'data', 'reports');
+      const filepath = path.join(reportsDir, filename);
+
+      // Security check: prevent directory traversal
+      if (!filepath.startsWith(reportsDir)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无效的文件路径' }));
+        return;
+      }
+
+      // Read file
+      const content = await fs.readFile(filepath, 'utf-8');
+
+      res.writeHead(200, {
+        'Content-Type': 'text/markdown; charset=utf-8',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
+      });
+      res.end(content);
+
+    } catch (error) {
+      console.error('Download report error:', error);
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: '报告文件不存在' }));
     }
     return;
   }

@@ -1599,7 +1599,182 @@
       border-color: #ccc;
       cursor: not-allowed;
     }
+
+    /* ===== AI Report Styles ===== */
+
+    /* Report Section */
+    .report-section {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Generate Report Button */
+    .btn-generate-report {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-generate-report:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-generate-report:active {
+      transform: translateY(0);
+    }
+
+    .btn-generate-report:disabled {
+      background: linear-gradient(135deg, #ccc 0%, #999 100%);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Report Modal */
+    .report-modal-content {
+      width: 90%;
+      max-width: 900px;
+      height: 85vh;
+      overflow-y: auto;
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: white;
+      z-index: 10;
+    }
+
+    .report-header h3 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .report-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .report-actions .btn-secondary {
+      padding: 8px 16px;
+      font-size: 14px;
+    }
+
+    /* Loading Animation */
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+    }
+
+    .loading-spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .loading-container p {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    /* Markdown Body Styles */
+    .markdown-body {
+      padding: 30px;
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
+    .markdown-body h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-top: 30px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .markdown-body h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-top: 24px;
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    .markdown-body h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-top: 20px;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+
+    .markdown-body p {
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    .markdown-body ul, .markdown-body ol {
+      padding-left: 28px;
+      margin-bottom: 16px;
+    }
+
+    .markdown-body li {
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .markdown-body strong {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .markdown-body code {
+      background: var(--bg-secondary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .markdown-body blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 16px;
+      margin: 16px 0;
+      color: var(--text-secondary);
+      font-style: italic;
+    }
   </style>
+
+  <!-- Markdown Renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
 </head>
 <body>
   <!-- Header -->
@@ -1719,6 +1894,51 @@
       <div class="button-group">
         <button class="btn btn-primary" onclick="startScraping()">开始抓取</button>
         <button class="btn btn-secondary" onclick="clearConfig()">清空配置</button>
+      </div>
+    </div>
+
+    <!-- Vision Scraping Section (新方案) -->
+    <div class="section" style="border-left: 4px solid #10b981;">
+      <h2 class="section-title">
+        🚀 视觉抓取（推荐）
+        <span style="font-size: 0.8em; color: #10b981; font-weight: normal;">
+          • 绕过反爬 • 无配额限制 • 数据质量高
+        </span>
+      </h2>
+
+      <div class="form-group">
+        <label for="visionPlatform">选择平台</label>
+        <select id="visionPlatform" style="padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; width: 100%;">
+          <option value="weibo">微博搜索</option>
+          <option value="xiaohongshu">小红书搜索</option>
+          <option value="douyin">抖音搜索（需手动验证）</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="visionKeyword">搜索关键词</label>
+        <input type="text" id="visionKeyword" placeholder="例如：护肤品、美妆技巧"
+               style="padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; width: 100%;">
+      </div>
+
+      <div class="form-group">
+        <label for="visionMaxResults">提取数量</label>
+        <input type="number" id="visionMaxResults" value="10" min="1" max="20"
+               style="padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; width: 100%;">
+      </div>
+
+      <div class="button-group">
+        <button class="btn btn-primary" onclick="startVisionScraping()"
+                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          开始视觉抓取
+        </button>
+      </div>
+
+      <div style="margin-top: 15px; padding: 12px; background: #f0fdf4; border-radius: 6px; font-size: 0.9em; color: #166534;">
+        <strong>📌 使用说明：</strong><br>
+        • 微博/小红书：直接抓取，无需额外操作<br>
+        • 抖音：首次使用需在浏览器中手动完成滑块验证<br>
+        • 数据自动保存到「数据包管理」区域
       </div>
     </div>
 
@@ -1911,6 +2131,17 @@
           </div>
           <!-- Insights Container -->
           <div id="insightsContainer" class="insights-container" style="display: none;"></div>
+
+          <!-- AI Report Section -->
+          <div class="report-section">
+            <button id="generateReportBtn" class="btn-generate-report" onclick="generateAIReport()">
+              ✨ 生成AI数据报告
+            </button>
+            <button id="viewReportHistoryBtn" class="btn-secondary" onclick="viewReportHistory()" style="margin-left: 10px;">
+              📚 查看历史报告
+            </button>
+          </div>
+
           <canvas id="trendChart"></canvas>
           <div id="canvasTooltip"></div>
         </div>
@@ -3796,6 +4027,187 @@
       }
     }
 
+    // ===== AI Report Generation Functions =====
+
+    // Global variables for report
+    let currentReportMarkdown = '';
+    let currentReportTaskId = null;
+    let currentEventSource = null;
+
+    // 1. Generate AI Report (main entry point)
+    async function generateAIReport() {
+      // Check if data exists
+      if (!allFiles || allFiles.length === 0) {
+        showToast('请先采集数据包', 'warning');
+        return;
+      }
+
+      // Select latest data package
+      const latestFile = allFiles[0];
+
+      // Show modal and loading state
+      showReportModal();
+      document.getElementById('reportLoading').style.display = 'flex';
+      document.getElementById('reportContent').style.display = 'none';
+      document.getElementById('reportContent').innerHTML = '';
+      currentReportMarkdown = '';
+
+      try {
+        // Call backend API
+        const response = await fetch('/api/generate-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dataPackageId: latestFile.filename,
+            reportType: 'full'
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          currentReportTaskId = result.taskId;
+          streamReportContent(result.taskId);
+        } else {
+          throw new Error(result.error || '报告生成失败');
+        }
+      } catch (error) {
+        showToast('报告生成失败: ' + error.message, 'error');
+        closeReportModal();
+      }
+    }
+
+    // 2. Stream report content via SSE
+    function streamReportContent(taskId) {
+      // Close existing connection if any
+      if (currentEventSource) {
+        currentEventSource.close();
+      }
+
+      currentEventSource = new EventSource(`/api/progress/${taskId}`);
+
+      currentEventSource.addEventListener('message', (e) => {
+        const data = JSON.parse(e.data);
+
+        switch (data.type) {
+          case 'report_chunk':
+            // Hide loading, show content area
+            document.getElementById('reportLoading').style.display = 'none';
+            document.getElementById('reportContent').style.display = 'block';
+
+            // Append markdown content
+            currentReportMarkdown += data.content;
+            renderMarkdown(currentReportMarkdown);
+            break;
+
+          case 'complete':
+            showToast('报告生成完成！', 'success');
+            currentEventSource.close();
+            currentEventSource = null;
+            break;
+
+          case 'error':
+            showToast('错误: ' + data.message, 'error');
+            currentEventSource.close();
+            currentEventSource = null;
+            break;
+        }
+      });
+
+      currentEventSource.onerror = (error) => {
+        console.error('SSE连接错误:', error);
+        if (currentEventSource) {
+          currentEventSource.close();
+          currentEventSource = null;
+        }
+        showToast('连接断开，请重试', 'error');
+      };
+    }
+
+    // 3. Render markdown using marked.js
+    function renderMarkdown(markdown) {
+      try {
+        const html = marked.parse(markdown);
+        document.getElementById('reportContent').innerHTML = html;
+
+        // Auto-scroll to bottom
+        const reportBody = document.getElementById('reportBody');
+        reportBody.scrollTop = reportBody.scrollHeight;
+      } catch (error) {
+        console.error('Markdown渲染错误:', error);
+      }
+    }
+
+    // 4. Modal control functions
+    function showReportModal() {
+      document.getElementById('reportModal').style.display = 'block';
+      currentReportMarkdown = '';
+    }
+
+    function closeReportModal() {
+      document.getElementById('reportModal').style.display = 'none';
+
+      // Close SSE connection
+      if (currentEventSource) {
+        currentEventSource.close();
+        currentEventSource = null;
+      }
+
+      // Clear task ID
+      currentReportTaskId = null;
+    }
+
+    // 5. Copy markdown to clipboard
+    function copyReportMarkdown() {
+      if (!currentReportMarkdown) {
+        showToast('报告内容为空', 'warning');
+        return;
+      }
+
+      navigator.clipboard.writeText(currentReportMarkdown)
+        .then(() => {
+          showToast('Markdown已复制到剪贴板', 'success');
+        })
+        .catch(err => {
+          console.error('复制失败:', err);
+          showToast('复制失败', 'error');
+        });
+    }
+
+    // 6. Export to PDF (placeholder for Phase 5)
+    function exportReportPDF() {
+      showToast('PDF导出功能开发中...', 'info');
+      // TODO: Phase 5 - Integrate html2pdf.js
+    }
+
+    // 7. View report history (Phase 3)
+    async function viewReportHistory() {
+      try {
+        const response = await fetch('/api/reports');
+        const reports = await response.json();
+
+        if (reports.length === 0) {
+          showToast('暂无历史报告', 'info');
+          return;
+        }
+
+        // TODO: Phase 3 - Show reports list in a modal
+        console.log('历史报告:', reports);
+        showToast(`找到 ${reports.length} 份历史报告`, 'success');
+
+      } catch (error) {
+        console.error('加载失败:', error);
+        showToast('加载失败: ' + error.message, 'error');
+      }
+    }
+
+    // Close report modal when clicking outside
+    window.addEventListener('click', (e) => {
+      const reportModal = document.getElementById('reportModal');
+      if (e.target === reportModal) {
+        closeReportModal();
+      }
+    });
+
     function showToast(message, type = 'info') {
       // Create toast element
       const toast = document.createElement('div');
@@ -4499,6 +4911,141 @@
         logOutput.innerHTML += '💡 请检查：<br>';
         logOutput.innerHTML += '  1. API Key 是否配置正确<br>';
         logOutput.innerHTML += '  2. 网络连接是否正常<br>';
+        logOutput.innerHTML += '  3. 后端服务器是否运行<br>';
+      }
+    }
+
+    // Start vision-based scraping
+    async function startVisionScraping() {
+      const platform = document.getElementById('visionPlatform').value;
+      const keyword = document.getElementById('visionKeyword').value.trim();
+      const maxResults = parseInt(document.getElementById('visionMaxResults').value);
+
+      if (!keyword) {
+        alert('请输入搜索关键词');
+        return;
+      }
+
+      const config = { platform, keyword, maxResults };
+
+      // Show progress section
+      const progressSection = document.getElementById('progressSection');
+      progressSection.classList.add('active');
+      progressSection.scrollIntoView({ behavior: 'smooth' });
+
+      // Reset progress
+      const statusBadge = document.getElementById('statusBadge');
+      const progressFill = document.getElementById('progressFill');
+      const logOutput = document.getElementById('logOutput');
+
+      statusBadge.textContent = '进行中...';
+      statusBadge.className = 'status-badge running';
+      progressFill.style.width = '0%';
+      logOutput.innerHTML = `🚀 启动视觉抓取: ${platform} - "${keyword}"<br>`;
+
+      try {
+        // Step 1: Send request to backend
+        logOutput.innerHTML += '✓ 发送抓取请求到后端...<br>';
+        progressFill.style.width = '5%';
+
+        const response = await fetch('/api/scrape-vision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+          throw new Error(result.error || '抓取失败');
+        }
+
+        const taskId = result.taskId;
+        logOutput.innerHTML += `✓ 任务已启动 (ID: ${taskId})<br>`;
+        progressFill.style.width = '10%';
+
+        // Step 2: Connect to SSE endpoint for real-time progress
+        logOutput.innerHTML += '✓ 连接实时进度推送...<br>';
+
+        const eventSource = new EventSource(`/api/progress/${taskId}`);
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'connected') {
+              logOutput.innerHTML += '✓ 实时连接已建立<br>';
+            } else if (data.type === 'log') {
+              // Append log message
+              const message = data.message.replace(/\n/g, '<br>');
+              logOutput.innerHTML += message + '<br>';
+              logOutput.scrollTop = logOutput.scrollHeight;
+            } else if (data.type === 'progress') {
+              // Update progress bar
+              progressFill.style.width = data.progress + '%';
+            } else if (data.type === 'status') {
+              // Update status
+              if (data.message) {
+                logOutput.innerHTML += `${data.message}<br>`;
+              }
+
+              if (data.progress !== undefined) {
+                progressFill.style.width = data.progress + '%';
+              }
+
+              if (data.status === 'completed') {
+                statusBadge.textContent = '已完成';
+                statusBadge.className = 'status-badge completed';
+                eventSource.close();
+
+                // Show result
+                if (data.dataCount) {
+                  logOutput.innerHTML += `<br>📊 成功提取 ${data.dataCount} 条数据<br>`;
+                }
+                if (data.resultFile) {
+                  logOutput.innerHTML += `📁 文件: ${data.resultFile}<br>`;
+                }
+
+                // Refresh file list
+                setTimeout(() => {
+                  loadDataPackages();
+                  logOutput.innerHTML += '<br>💡 提示：数据包已生成，请在下方"数据包下载"区域查看并下载<br>';
+                }, 1000);
+              } else if (data.status === 'failed') {
+                statusBadge.textContent = '失败';
+                statusBadge.className = 'status-badge';
+                eventSource.close();
+              }
+            }
+          } catch (err) {
+            console.error('SSE解析错误:', err);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          console.error('SSE连接错误:', error);
+          eventSource.close();
+
+          // Fallback: assume completion after timeout
+          logOutput.innerHTML += '<br>⚠️  实时连接断开，切换到轮询模式...<br>';
+          setTimeout(() => {
+            progressFill.style.width = '100%';
+            statusBadge.textContent = '已完成（后台）';
+            statusBadge.className = 'status-badge completed';
+            loadDataPackages();
+          }, 5000);
+        };
+
+      } catch (error) {
+        console.error('视觉抓取错误:', error);
+        statusBadge.textContent = '失败';
+        statusBadge.className = 'status-badge';
+        statusBadge.style.background = '#ffebee';
+        statusBadge.style.color = '#c62828';
+        logOutput.innerHTML += `<br>❌ 错误: ${error.message}<br>`;
+        logOutput.innerHTML += '💡 请检查：<br>';
+        logOutput.innerHTML += '  1. Browse服务是否运行<br>';
+        logOutput.innerHTML += '  2. Cookie是否已导入（运行 /setup-browser-cookies）<br>';
         logOutput.innerHTML += '  3. 后端服务器是否运行<br>';
       }
     }
@@ -5246,6 +5793,29 @@
       </div>
       <div class="modal-body">
         <div id="jsonViewer" class="json-viewer"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Report Modal -->
+  <div id="reportModal" class="modal">
+    <div class="modal-content report-modal-content">
+      <div class="report-header">
+        <h3>AI数据分析报告</h3>
+        <div class="report-actions">
+          <button onclick="copyReportMarkdown()" class="btn-secondary">复制Markdown</button>
+          <button onclick="exportReportPDF()" class="btn-secondary">导出PDF</button>
+          <button onclick="closeReportModal()" class="btn-close">×</button>
+        </div>
+      </div>
+      <div id="reportBody" class="modal-body markdown-body">
+        <!-- Loading State -->
+        <div id="reportLoading" class="loading-container" style="display: none;">
+          <div class="loading-spinner"></div>
+          <p>AI正在分析数据...</p>
+        </div>
+        <!-- Report Content -->
+        <div id="reportContent"></div>
       </div>
     </div>
   </div>

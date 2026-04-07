@@ -18,10 +18,27 @@ const CONFIG = {
 };
 
 /**
- * 使用 Gemini CLI 抓取网页内容
+ * 解析Gemini CLI的JSON输出
+ * CLI输出格式: { "session_id": "...", "response": "实际内容", "stats": {...} }
+ */
+function parseGeminiCLIOutput(stdout) {
+  try {
+    const cliOutput = JSON.parse(stdout);
+    // response字段本身是一个JSON字符串，需要再次解析
+    return cliOutput.response || stdout;
+  } catch (error) {
+    // 如果解析失败，返回原始输出
+    console.warn('⚠️  无法解析Gemini CLI输出，返回原始内容');
+    return stdout;
+  }
+}
+
+/**
+ * 使用 Gemini CLI 抓取网页内容（带配额降级）
  */
 async function fetchWebContent(url, query = '提取页面所有关键信息') {
   console.log(`\n📡 正在抓取: ${url}`);
+  console.log(`⏱️  超时设置: 30秒`);
 
   const prompt = `请访问这个网址并${query}：${url}
 
@@ -44,29 +61,56 @@ JSON 格式示例：
 }`;
 
   try {
+    console.log(`🔄 调用Gemini API...`);
     const { stdout, stderr } = await execAsync(
       `${CONFIG.geminiCommand} -p "${prompt.replace(/"/g, '\\"')}" --output-format json`,
-      { maxBuffer: 10 * 1024 * 1024 } // 10MB buffer
+      {
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+        timeout: 30000 // 30秒超时
+      }
     );
 
     if (stderr) {
+      // 检查是否是配额错误
+      if (stderr.includes('exhausted your daily quota') || stderr.includes('quota exceeded') || stderr.includes('429')) {
+        console.warn('⚠️  Gemini API 配额已用完，请稍后重试或使用视觉抓取方案');
+        throw new Error('QUOTA_EXCEEDED: Gemini API 每日配额已用完（免费版限制 20 次/天）。建议：1) 等待明天重置 2) 使用 /api/scrape-vision 视觉抓取 3) 升级到付费版');
+      }
       console.warn('⚠️  警告:', stderr);
     }
 
-    return stdout;
+    console.log(`✅ 抓取完成`);
+    return parseGeminiCLIOutput(stdout);
   } catch (error) {
-    console.error('❌ 抓取失败:', error.message);
+    // 配额错误特殊处理
+    if (error.message && error.message.includes('QUOTA_EXCEEDED')) {
+      throw error;
+    }
+
+    // 检查错误输出中是否包含配额信息
+    const errorOutput = error.stderr || error.stdout || error.message || '';
+    if (errorOutput.includes('exhausted your daily quota') || errorOutput.includes('quota exceeded')) {
+      console.error('❌ Gemini API 配额已用完');
+      throw new Error('QUOTA_EXCEEDED: Gemini API 每日配额已用完（免费版限制 20 次/天）。建议使用视觉抓取方案：node platform-server.js 启动后访问 http://localhost:8080，选择"视觉抓取"模式');
+    }
+
+    if (error.killed && error.signal === 'SIGTERM') {
+      console.error('❌ 抓取超时（30秒）');
+    } else {
+      console.error('❌ 抓取失败:', error.message);
+    }
     throw error;
   }
 }
 
 /**
- * 搜索并抓取相关内容
+ * 搜索并抓取相关内容（带配额降级）
  */
 async function searchAndFetch(keyword, options = {}) {
   const { maxResults = 5, platform = '全网' } = options;
 
   console.log(`\n🔍 搜索关键词: ${keyword} (${platform})`);
+  console.log(`⏱️  超时设置: 30秒`);
 
   const prompt = `使用 Google Search 搜索关键词"${keyword}"，并提取前${maxResults}条结果。
 
@@ -86,25 +130,47 @@ JSON 格式：
 ]`;
 
   try {
-    const { stdout } = await execAsync(
+    console.log(`🔄 调用Gemini API...`);
+    const { stdout, stderr } = await execAsync(
       `${CONFIG.geminiCommand} -p "${prompt.replace(/"/g, '\\"')}" --output-format json`,
-      { maxBuffer: 10 * 1024 * 1024 }
+      {
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 30000 // 30秒超时
+      }
     );
 
-    return stdout;
+    // 检查配额错误
+    if (stderr && (stderr.includes('exhausted your daily quota') || stderr.includes('quota exceeded'))) {
+      throw new Error('QUOTA_EXCEEDED: Gemini API 配额已用完');
+    }
+
+    console.log(`✅ 搜索完成，找到数据`);
+    return parseGeminiCLIOutput(stdout);
   } catch (error) {
-    console.error('❌ 搜索失败:', error.message);
+    // 配额错误处理
+    const errorOutput = error.stderr || error.stdout || error.message || '';
+    if (errorOutput.includes('exhausted your daily quota') || errorOutput.includes('quota exceeded')) {
+      console.error('❌ Gemini API 配额已用完（免费版 20 次/天）');
+      throw new Error('QUOTA_EXCEEDED: 请使用视觉抓取方案或等待明天重置');
+    }
+
+    if (error.killed && error.signal === 'SIGTERM') {
+      console.error('❌ 搜索超时（30秒）');
+    } else {
+      console.error('❌ 搜索失败:', error.message);
+    }
     throw error;
   }
 }
 
 /**
- * 分析内容趋势
+ * 分析内容趋势（带配额降级）
  */
 async function analyzeTrends(topic, options = {}) {
   const { platforms = ['小红书', '抖音', '微博'], days = 7 } = options;
 
   console.log(`\n📊 分析趋势: ${topic}`);
+  console.log(`⏱️  超时设置: 40秒`);
 
   const prompt = `分析"${topic}"在 ${platforms.join('、')} 等平台近${days}天的内容趋势。
 
@@ -134,14 +200,35 @@ async function analyzeTrends(topic, options = {}) {
 }`;
 
   try {
-    const { stdout } = await execAsync(
+    console.log(`🔄 调用Gemini API...`);
+    const { stdout, stderr } = await execAsync(
       `${CONFIG.geminiCommand} -p "${prompt.replace(/"/g, '\\"')}" --output-format json`,
-      { maxBuffer: 10 * 1024 * 1024 }
+      {
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 40000 // 40秒超时（趋势分析较复杂）
+      }
     );
 
-    return stdout;
+    // 检查配额错误
+    if (stderr && (stderr.includes('exhausted your daily quota') || stderr.includes('quota exceeded'))) {
+      throw new Error('QUOTA_EXCEEDED: Gemini API 配额已用完');
+    }
+
+    console.log(`✅ 分析完成`);
+    return parseGeminiCLIOutput(stdout);
   } catch (error) {
-    console.error('❌ 分析失败:', error.message);
+    // 配额错误处理
+    const errorOutput = error.stderr || error.stdout || error.message || '';
+    if (errorOutput.includes('exhausted your daily quota') || errorOutput.includes('quota exceeded')) {
+      console.error('❌ Gemini API 配额已用完（免费版 20 次/天）');
+      throw new Error('QUOTA_EXCEEDED: 请使用视觉抓取方案或等待明天重置');
+    }
+
+    if (error.killed && error.signal === 'SIGTERM') {
+      console.error('❌ 分析超时（40秒）');
+    } else {
+      console.error('❌ 分析失败:', error.message);
+    }
     throw error;
   }
 }
@@ -271,8 +358,12 @@ async function main() {
   }
 }
 
-// 如果直接运行此脚本
-if (import.meta.url === `file://${process.argv[1]}`) {
+// 如果直接运行此脚本（修复路径判断）
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] && (process.argv[1] === __filename || process.argv[1].endsWith('scraper.js'));
+
+if (isMainModule) {
   main();
 }
 
