@@ -4999,7 +4999,14 @@
                 eventSource.close();
 
                 // Show result
-                if (data.dataCount) {
+                if (data.dataCount === 0) {
+                  logOutput.innerHTML += `<br>⚠️  <span style="color: var(--warning)">未提取到数据（0条）</span><br>`;
+                  logOutput.innerHTML += `<br>可能原因：<br>`;
+                  logOutput.innerHTML += `  • 该平台需要登录才能查看内容<br>`;
+                  logOutput.innerHTML += `  • 搜索关键词没有结果<br>`;
+                  logOutput.innerHTML += `  • 页面加载不完整或被限流<br><br>`;
+                  logOutput.innerHTML += `💡 建议：使用已登录的浏览器 Cookie，或尝试其他关键词<br>`;
+                } else if (data.dataCount) {
                   logOutput.innerHTML += `<br>📊 成功提取 ${data.dataCount} 条数据<br>`;
                 }
                 if (data.resultFile) {

@@ -158,10 +158,43 @@ JSON格式：
   }
 ]`;
 
-  // 3. Claude分析
+  // 3. 先检测是否是登录页面
+  const loginCheckPrompt = `这张截图显示的是什么页面？请回答以下问题：
+1. 是否是登录/注册页面？
+2. 是否需要用户登录才能查看内容？
+3. 页面上是否有"登录"、"注册"、"验证"等相关文字？
+
+请用 JSON 格式回答：
+{
+  "isLoginPage": true/false,
+  "reason": "简短说明"
+}`;
+
+  const loginCheck = await analyzeWithClaude(screenshotPath, loginCheckPrompt);
+
+  try {
+    let checkJson = loginCheck.trim();
+    if (checkJson.startsWith('```')) {
+      checkJson = checkJson.replace(/```json?\n?/g, '').replace(/```$/g, '').trim();
+    }
+    const checkResult = JSON.parse(checkJson);
+
+    if (checkResult.isLoginPage) {
+      console.error(`❌ 微博需要登录: ${checkResult.reason}`);
+      throw new Error(`需要登录：${checkResult.reason}。请使用已登录的浏览器 Cookie，或手动登录后再抓取。`);
+    }
+  } catch (error) {
+    if (error.message.includes('需要登录')) {
+      throw error;
+    }
+    // 登录检测失败，继续尝试提取数据
+    console.warn('⚠️  登录检测失败，继续尝试提取数据');
+  }
+
+  // 4. Claude分析内容
   const result = await analyzeWithClaude(screenshotPath, extractPrompt);
 
-  // 4. 解析JSON
+  // 5. 解析JSON
   try {
     // 提取JSON（去除可能的markdown代码块）
     let jsonText = result.trim();
@@ -171,13 +204,23 @@ JSON格式：
 
     const data = JSON.parse(jsonText);
 
-    console.log(`✅ 成功提取 ${data.length} 条微博`);
+    // 如果提取到 0 条数据，给出警告
+    if (data.length === 0) {
+      console.warn('⚠️  未提取到任何数据，可能原因：');
+      console.warn('   1. 页面需要登录');
+      console.warn('   2. 搜索关键词没有结果');
+      console.warn('   3. 页面加载不完整');
+    } else {
+      console.log(`✅ 成功提取 ${data.length} 条微博`);
+    }
+
     return {
       keyword,
       url,
       timestamp: new Date().toISOString(),
       count: data.length,
-      data
+      data,
+      warning: data.length === 0 ? '未提取到数据，可能需要登录或搜索无结果' : null
     };
   } catch (error) {
     console.error('❌ JSON解析失败:', error.message);
