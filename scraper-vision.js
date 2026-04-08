@@ -128,9 +128,12 @@ async function analyzeWithClaude(screenshotPath, extractPrompt) {
  * 微博搜索抓取
  */
 async function scrapeWeibo(keyword, options = {}) {
-  const { maxResults = 10 } = options;
+  const { maxResults = 10, useCookies = false } = options;
 
   console.log(`\n🔍 抓取微博: ${keyword}`);
+  if (useCookies) {
+    console.log(`🍪 使用浏览器 Cookie（需先运行 cookie-importer）`);
+  }
 
   const url = `https://s.weibo.com/weibo?q=${encodeURIComponent(keyword)}`;
 
@@ -230,12 +233,15 @@ JSON格式：
 }
 
 /**
- * 小红书搜索抓取（需要代理）
+ * 小红书搜索抓取
  */
 async function scrapeXiaohongshu(keyword, options = {}) {
-  const { maxResults = 10, proxy = null } = options;
+  const { maxResults = 10, proxy = null, useCookies = false } = options;
 
   console.log(`\n📕 抓取小红书: ${keyword}`);
+  if (useCookies) {
+    console.log(`🍪 使用浏览器 Cookie（需先运行 cookie-importer）`);
+  }
 
   if (proxy) {
     console.log(`🔀 使用代理: ${proxy}`);
@@ -308,9 +314,12 @@ async function handleCaptchaInteractive() {
  * 抖音搜索抓取（需要处理验证码）
  */
 async function scrapeDouyin(keyword, options = {}) {
-  const { maxResults = 10, skipCaptchaCheck = false } = options;
+  const { maxResults = 10, skipCaptchaCheck = false, useCookies = false } = options;
 
   console.log(`\n🎵 抓取抖音: ${keyword}`);
+  if (useCookies) {
+    console.log(`🍪 使用浏览器 Cookie（需先运行 cookie-importer）`);
+  }
   console.log(`⚠️  注意: 抖音可能需要滑块验证，如遇验证请手动完成`);
 
   const url = `https://www.douyin.com/search/${encodeURIComponent(keyword)}`;
